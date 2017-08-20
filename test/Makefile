@@ -6,7 +6,7 @@ CFLAGS=-g -Wall -Wextra -std=c99 -pedantic --pedantic-errors -I$(INCLUDE)
 
 TARGET=test
 
-OBJS=test.o camera.o
+OBJS=test.o camera.o 
 
 all: $(OBJS) Makefile ../math_lib/*.h
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)

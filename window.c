@@ -72,7 +72,7 @@ void windowUpdate(Window *window)
 {
 	SDL_GL_SwapWindow(window->sdlWindow);
 }
-void windowDestroy(Window *window) 
+void windowDelete(Window *window) 
 {
 	if(!window) {
 		fatalError("Cannot destroy empty window\n");

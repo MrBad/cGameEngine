@@ -20,6 +20,6 @@ void windowSetClearColor(float r, float g, float b, float a);
 void windowClear();
 void windowUpdate(Window *window);
 //bool windowHandleEvents(Window *window);
-void windowDestroy(Window *window);
+void windowDelete(Window *window);
 
 #endif

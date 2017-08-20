@@ -6,10 +6,10 @@ OFLAGS=-c
 CFLAGS=-g -Wall -Wextra -std=c99 -pedantic -I$(INCLUDE)
 MAKE=make
 
-TARGET=colors
+TARGET=cgame
 OBJECTS=main.o window.o error.o sprite.o vertex.o gl_program.o \
 		file_buf.o upng/upng.o texture.o camera.o math_lib/math_lib.a \
-		inmgr.o
+		inmgr.o game.o
 
 all: $(OBJECTS) Makefile math_lib/mat4f.h
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJECTS) $(LIBS)
