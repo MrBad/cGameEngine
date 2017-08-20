@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL2/SDL.h>
-#include "input_manager.h"
+#include "inmgr.h"
 
-InputManager *inputManagerNew()
+InMgr *inMgrNew()
 {
-	InputManager *input = NULL;
-	if(!(input = calloc(1, sizeof(InputManager)))) {
+	InMgr *input = NULL;
+	if(!(input = calloc(1, sizeof(*input)))) {
 		fprintf(stderr, "Cannot alloc memory for InputManager\n");
 		return NULL;
 	}
@@ -21,16 +21,16 @@ static void setKeyBuf(unsigned char *buf, int sdlKey, int val)
 		case SDLK_RIGHT:	buf[IM_KEY_RIGHT]	= val; break;
 		case SDLK_UP:		buf[IM_KEY_UP]		= val; break;
 		case SDLK_a:		buf[IM_KEY_A]		= val; break;
-		case SDLK_d:		buf[IM_KEY_D] = val; break;
-		case SDLK_w:		buf[IM_KEY_W] = val; break;
-		case SDLK_s:		buf[IM_KEY_S] = val; break;
-		case SDLK_q:		buf[IM_KEY_Q] = val; break;
-		case SDLK_e:		buf[IM_KEY_E] = val; break;
+		case SDLK_d:		buf[IM_KEY_D]		= val; break;
+		case SDLK_w:		buf[IM_KEY_W]		= val; break;
+		case SDLK_s:		buf[IM_KEY_S]		= val; break;
+		case SDLK_q:		buf[IM_KEY_Q]		= val; break;
+		case SDLK_e:		buf[IM_KEY_E]		= val; break;
 	}
 }
 
 // hadle events //
-void inputManagerUpdate(InputManager *input) 
+void inMgrUpdate(InMgr *input) 
 {
 	SDL_Event e;
 	while(SDL_PollEvent(&e)) {
@@ -50,17 +50,17 @@ void inputManagerUpdate(InputManager *input)
 	}	
 }
 
-bool inputManagerIsKeyPressed(InputManager *input, unsigned char key)
+bool inMgrIsKeyPressed(InMgr *input, unsigned char key)
 {
 	return input->keysDown[key] == 1;
 }
 
-bool inputManagerIsQuitRequested(InputManager *input) 
+bool inMgrIsQuitRequested(InMgr *input) 
 {
 	return input->quitRequested;
 }
 
-void inputManagerDelete(InputManager *input) 
+void inMgrDelete(InMgr *input) 
 {
 	free(input);
 }

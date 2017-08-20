@@ -7,7 +7,7 @@
 #include "gl_program.h"
 #include "texture.h"
 #include "camera.h"
-#include "input_manager.h"
+#include "inmgr.h"
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
@@ -23,13 +23,13 @@ int main()
 	Sprite* sprite = NULL;
 	GLProgram* program = NULL;
 	Camera *camera = NULL;
-	InputManager *inputManager = NULL;
+	InMgr *inmgr = NULL;
 
 	int status = GAME_PLAYING;
 	
 	
 	window = windowNew("Colors in C", WINDOW_WIDTH, WINDOW_HEIGHT, 0);
-	inputManager = inputManagerNew();
+	inmgr = inMgrNew();
 	camera = cameraNew(WINDOW_WIDTH, WINDOW_HEIGHT);
 	cameraSetScale(camera, 0.5);
 	cameraUpdate(camera);
@@ -53,29 +53,29 @@ int main()
 
 	float time = 0;
 	while(status == GAME_PLAYING) {
-		inputManagerUpdate(inputManager);
-		if(inputManager->quitRequested) {
+		inMgrUpdate(inmgr);
+		if(inmgr->quitRequested) {
 			status = GAME_OVER;
 		}
 
 		float camSpeed = 5.0f;
 		float scaleSpeed = 1.02f;
-		if(inputManagerIsKeyPressed(inputManager, IM_KEY_A)) {
+		if(inMgrIsKeyPressed(inmgr, IM_KEY_A)) {
 			cameraSetPosition(camera, camera->position.x-camSpeed, camera->position.y);
 		}
-		if(inputManagerIsKeyPressed(inputManager, IM_KEY_D)) {
+		if(inMgrIsKeyPressed(inmgr, IM_KEY_D)) {
 			cameraSetPosition(camera, camera->position.x+camSpeed, camera->position.y);
 		}
-		if(inputManagerIsKeyPressed(inputManager, IM_KEY_W)) {
+		if(inMgrIsKeyPressed(inmgr, IM_KEY_W)) {
 			cameraSetPosition(camera, camera->position.x, camera->position.y+camSpeed);
 		}
-		if(inputManagerIsKeyPressed(inputManager, IM_KEY_S)) {
+		if(inMgrIsKeyPressed(inmgr, IM_KEY_S)) {
 			cameraSetPosition(camera, camera->position.x, camera->position.y-camSpeed);
 		}
-		if(inputManagerIsKeyPressed(inputManager, IM_KEY_Q)) {
+		if(inMgrIsKeyPressed(inmgr, IM_KEY_Q)) {
 			cameraSetScale(camera, camera->scale * scaleSpeed);
 		}
-		if(inputManagerIsKeyPressed(inputManager, IM_KEY_E)) {
+		if(inMgrIsKeyPressed(inmgr, IM_KEY_E)) {
 			cameraSetScale(camera, camera->scale / scaleSpeed);
 		}
 		cameraUpdate(camera);
@@ -110,6 +110,7 @@ int main()
 
 	
 	glProgramDelete(program);
+	inMgrDelete(inmgr);
 	cameraDelete(camera);
 	spriteDelete(sprite);
 	

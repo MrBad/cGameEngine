@@ -9,7 +9,7 @@ MAKE=make
 TARGET=colors
 OBJECTS=main.o window.o error.o sprite.o vertex.o gl_program.o \
 		file_buf.o upng/upng.o texture.o camera.o math_lib/math_lib.a \
-		input_manager.o
+		inmgr.o
 
 all: $(OBJECTS) Makefile math_lib/mat4f.h
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJECTS) $(LIBS)
