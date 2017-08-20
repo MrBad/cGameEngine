@@ -1,12 +1,12 @@
 #ifndef GAME_H
 #define GAME_H
 
-#include "window.h"
-#include "sprite.h"
-#include "texture.h"
-#include "gl_program.h"
-#include "camera.h"
-#include "inmgr.h"
+#include "mrb_lib/window.h"
+#include "mrb_lib/sprite.h"
+#include "mrb_lib/texture.h"
+#include "mrb_lib/gl_program.h"
+#include "mrb_lib/camera.h"
+#include "mrb_lib/inmgr.h"
 
 
 typedef enum {

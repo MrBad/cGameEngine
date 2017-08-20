@@ -1,23 +1,22 @@
 #DFLAGS=
 INCLUDE=.
-LIBS=-lSDL2 -lGL -lGLEW -lm
+LIBS=-lSDL2 -lGL -lGLEW -lm mrb_lib/mrb_lib.a
 CC=gcc
 OFLAGS=-c
 CFLAGS=-g -Wall -Wextra -std=c99 -pedantic -I$(INCLUDE)
 MAKE=make
 
 TARGET=cgame
-OBJECTS=main.o window.o error.o sprite.o vertex.o gl_program.o \
-		file_buf.o upng/upng.o texture.o camera.o math_lib/math_lib.a \
-		inmgr.o game.o
+OBJECTS=main.o game.o 
 
-all: $(OBJECTS) Makefile math_lib/mat4f.h
+all: $(OBJECTS) Makefile mrb_lib/mrb_lib.a
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJECTS) $(LIBS)
 
-math_lib/math_lib.a: math_lib/Makefile
-	$(MAKE) -C math_lib
+mrb_lib/mrb_lib.a: mrb_lib/Makefile mrb_lib/*.h mrb_lib/*.c
+	$(MAKE) -C mrb_lib
 
 %o: %.c Makefile
 	$(CC) $(CFLAGS) $(OFLAGS) -o $@ $<
 clean:
 	rm $(OBJECTS) $(TARGET)
+	$(MAKE) -C mrb_lib clean

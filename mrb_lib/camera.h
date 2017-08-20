@@ -3,8 +3,7 @@
 
 #include <stdbool.h>
 #include "vertex.h"
-//#include "linmath.h"
-#include "math_lib/mat4f.h"
+#include "mat4f.h"
 
 // 2D camera
 typedef struct {

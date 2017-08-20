@@ -23,3 +23,4 @@ int vertexSetUV(Vertex *vert, float u, float v)
 	vert->uv.v = v;
 	return 0;
 }
+
