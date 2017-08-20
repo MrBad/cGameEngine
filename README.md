@@ -1,4 +1,7 @@
-# cGameEngine
-A small in progress C 2d game engine based on OpenGL
+# cColors
+OpenGL/SDL C program test
 
-Inspired by Ben beautiful C++ game tutorial - https://www.youtube.com/watch?v=FxCC9Ces1Yg&list=PLSPw4ASQYyymu3PfG9gxywSPghnSMiOAW
+
+repends on elanthis/upng
+git submodule init
+git submodule update --remote
