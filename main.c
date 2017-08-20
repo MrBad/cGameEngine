@@ -59,7 +59,7 @@ int main()
 		}
 
 		float camSpeed = 5.0f;
-		float scaleSpeed = 1.1f;
+		float scaleSpeed = 1.02f;
 		if(inputManagerIsKeyPressed(inputManager, IM_KEY_A)) {
 			cameraSetPosition(camera, camera->position.x-camSpeed, camera->position.y);
 		}

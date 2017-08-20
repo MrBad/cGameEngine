@@ -60,8 +60,8 @@ void cameraUpdate(Camera *camera)
 	camera->cameraMatrix = mat4fMul(mat4fScale(scaleVec), camera->cameraMatrix);
 	//camera->cameraMatrix = mat4fIdentity();
 
-	printf("--- Camera Matrix ---\n");	
-	mat4fPrint(camera->cameraMatrix);
+	//printf("--- Camera Matrix ---\n");	
+	//mat4fPrint(camera->cameraMatrix);
 
 	camera->needsUpdate = false;
 }
