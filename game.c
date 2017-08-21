@@ -1,11 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <math.h>
 #include "game.h"
 
+
+#define SIZE(a) sizeof(a)/sizeof(*a)
 
 Game *gameNew() 
 {
 	Game *game;
+	unsigned int i;
 
 	if(!(game = malloc(sizeof(*game)))) {
 		fprintf(stderr, "Cannot alloc memory for Game\n");
@@ -17,7 +22,9 @@ Game *gameNew()
 	game->cam = NULL;
 	game->inmgr = NULL;
 	game->sprite = NULL;
-
+	for(i = 0; i < SIZE(game->sprites); i++) {
+		game->sprites[i] = NULL;
+	}
 	return game;
 }
 
@@ -32,6 +39,8 @@ static bool gameInitShaders(Game *game)
 
 bool gameInit(Game *game, int winWidth, int winHeight, const char *title) 
 {
+	unsigned int i;
+
 	game->state = GAME_PLAYING;
 	if(!(game->win = windowNew(title, winWidth, winHeight, 0))) {
 		fprintf(stderr, "Cannot init window\n");
@@ -45,10 +54,16 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 		fprintf(stderr, "Cannot init Camera\n");
 		return false;
 	}
+	srand(time(NULL));
+	/*
 	if(!(game->sprite = spriteNew(0,0, winWidth / 2, winHeight / 2))) {
 		fprintf(stderr, "Cannot init Sprite\n");
 		return false;
+	}*/
+	for(i = 0; i < SIZE(game->sprites); i++) {
+		game->sprites[i] = spriteNew(i*128, i* 96 + (rand() % 100), 128, 96);	
 	}
+	
 	if(!(game->texture = loadTexture("resources/earth.png"))) {
 		fprintf(stderr, "Cannot load texture\n");
 		return false;	
@@ -118,7 +133,7 @@ void gameHandleInput(Game *game)
 
 void gameLoop(Game *game) 
 {
-	float time = 0;
+	//float time = 0;
 	while(game->state == GAME_PLAYING) {
 		inMgrUpdate(game->inmgr);
 		if(game->inmgr->quitRequested) {
@@ -127,7 +142,7 @@ void gameLoop(Game *game)
 
 		gameHandleInput(game);
 		cameraUpdate(game->cam);
-		time += 0.05f;
+		//time += 0.05f;
 		windowClear();
 
 		glProgramUse(game->prog);
@@ -138,14 +153,24 @@ void gameLoop(Game *game)
 		glUniform1i(textureLocation, 0);
 		
 		// send time to shader
-        GLint timeLocation = glGetUniformLocation(game->prog->programID, "time");
-        glUniform1f(timeLocation, time);
+        //GLint timeLocation = glGetUniformLocation(game->prog->programID, "time");
+        //glUniform1f(timeLocation, time);
 
         // send matrix location
         GLint pLocation = glGetUniformLocation(game->prog->programID, "P");
         glUniformMatrix4fv(pLocation, 1, GL_FALSE, &(game->cam->cameraMatrix.m[0][0]));
 
-        spriteDraw(game->sprite);
+		//
+		//spriteBatchBegin()
+		//spriteBatchDraw()
+		//spriteBatchEnd()
+		//spriteBatchRender()
+		//
+		//spriteDraw(game->sprite);
+		unsigned int i;
+		for(i = 0; i < SIZE(game->sprites); i++) {
+			spriteDraw(game->sprites[i]);
+		}
 
         glBindTexture(GL_TEXTURE_2D, 0);
         glProgramUnuse(game->prog);

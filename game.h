@@ -21,7 +21,7 @@ typedef struct {
 	InMgr *inmgr;
 	Sprite *sprite; // will be removed
 	Texture *texture;
-
+	Sprite *sprites[1024];
 	GameStates state;
 
 	float camSpeed;

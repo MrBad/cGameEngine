@@ -38,6 +38,9 @@ Window *windowNew(const char *title, int width, int height, int flags)
 
 	SDL_GL_SetSwapInterval(1);
 
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	return window;
 	
 
