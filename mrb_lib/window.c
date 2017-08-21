@@ -36,6 +36,7 @@ Window *windowNew(const char *title, int width, int height, int flags)
 	printf("--- OpenGL Version: %s ---\n", glGetString(GL_VERSION));
 	windowSetClearColor(0, 0, 0.3, 1);
 
+	// 1 for vsync
 	SDL_GL_SetSwapInterval(0);
 
 	glEnable(GL_BLEND);

@@ -19,9 +19,8 @@ typedef struct {
 	GLProgram *prog;
 	Camera *cam;
 	InMgr *inmgr;
-	Sprite *sprite; // will be removed
 	Texture *texture;
-	Sprite *sprites[1024];
+	Sprite *sprites[1024]; // will be improved
 	GameStates state;
 
 	float camSpeed;

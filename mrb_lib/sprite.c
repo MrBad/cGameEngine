@@ -10,38 +10,26 @@
 void spriteSetPos(Sprite *sprite, float x, float y) 
 {
 	sprite->x = x;
-	sprite->y = y;
-	
+	sprite->y = y;	
 
-	Vertex ventrices[6];
-	vertexSetPos(ventrices+0, x + sprite->width, y + sprite->height);
-	vertexSetUV(ventrices+0, 1, 1);
+	vertexSetPos(sprite->ventrices + 0, x + sprite->width, y + sprite->height);
+	vertexSetPos(sprite->ventrices + 1, x, y + sprite->height);
+	vertexSetPos(sprite->ventrices + 2, x, y);
+	vertexSetPos(sprite->ventrices + 3, x, y);
+	vertexSetPos(sprite->ventrices + 4, x + sprite->width, y);
+	vertexSetPos(sprite->ventrices + 5, x + sprite->width, y + sprite->height);
 	
-	vertexSetPos(ventrices+1, x, y + sprite->height);
-	vertexSetUV(ventrices+1, 0, 1);
 	
-	vertexSetPos(ventrices+2, x, y);
-	vertexSetUV(ventrices+2, 0, 0);
-	
-	vertexSetPos(ventrices+3, x, y);
-	vertexSetUV(ventrices+3, 0,  0);
-	
-	vertexSetPos(ventrices+4, x + sprite->width, y);
-	vertexSetUV(ventrices+4, 1, 0);
-	
-	vertexSetPos(ventrices+5, x + sprite->width, y + sprite->height);
-	vertexSetUV(ventrices+5, 1, 1);
-	
-	for(int i = 0; i < 6; i++) {
-		vertexSetColor(ventrices + i, 255, 0, 255, 255);
-	}
-	
-	glBindBuffer(GL_ARRAY_BUFFER, sprite->vboID);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(ventrices), ventrices, GL_STATIC_DRAW);
+/*	glBindBuffer(GL_ARRAY_BUFFER, sprite->vboID);
+	glBufferData(
+			GL_ARRAY_BUFFER, sizeof(sprite->ventrices), 
+			sprite->ventrices, GL_STATIC_DRAW);
+
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
+*/
+	}
 
-Sprite *spriteNew(float x, float y, float width, float height) 
+Sprite *spriteNew(float x, float y, float width, float height, GLuint textureID) 
 {
 	Sprite *sprite = calloc(1, sizeof(Sprite));
 	if(!sprite) {
@@ -50,44 +38,26 @@ Sprite *spriteNew(float x, float y, float width, float height)
 
 	sprite->x = x;
 	sprite->y = y;
+	sprite->textureID = textureID;
 	sprite->width = width;
 	sprite->height = height;
 	sprite->vboID = 0;
 
-	glGenBuffers(1, &sprite->vboID);
 
-	// construct a vertex //
-	Vertex ventrices[6];
-	vertexSetPos(ventrices+0, x + width, y + height);
-	vertexSetUV(ventrices+0, 1, 1);
-	
-	vertexSetPos(ventrices+1, x, y + height);
-	vertexSetUV(ventrices+1, 0, 1);
-	
-	vertexSetPos(ventrices+2, x, y);
-	vertexSetUV(ventrices+2, 0, 0);
-	
-	vertexSetPos(ventrices+3, x, y);
-	vertexSetUV(ventrices+3, 0,  0);
-	
-	vertexSetPos(ventrices+4, x + width, y);
-	vertexSetUV(ventrices+4, 1, 0);
-	
-	vertexSetPos(ventrices+5, x + width, y + height);
-	vertexSetUV(ventrices+5, 1, 1);
+	vertexSetUV(sprite->ventrices + 0, 1, 1);
+	vertexSetUV(sprite->ventrices + 1, 0, 1);
+	vertexSetUV(sprite->ventrices + 2, 0, 0);
+	vertexSetUV(sprite->ventrices + 3, 0, 0);
+	vertexSetUV(sprite->ventrices + 4, 1, 0);
+	vertexSetUV(sprite->ventrices + 5, 1, 1);
 	
 	for(int i = 0; i < 6; i++) {
-		vertexSetColor(ventrices + i, 255, 0, 255, 255);
+		vertexSetColor(sprite->ventrices + i, 255, 0, 255, 255);
 	}
-	vertexSetColor(ventrices+1, 0, 0, 255, 255);
-	vertexSetColor(ventrices+4, 0, 255, 0, 255);
 
-	
-	glBindBuffer(GL_ARRAY_BUFFER, sprite->vboID);
+	glGenBuffers(1, &sprite->vboID);
 
-	glBufferData(GL_ARRAY_BUFFER, sizeof(ventrices), ventrices, GL_STATIC_DRAW);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	spriteSetPos(sprite, x, y);
 
 	return sprite;
 }
@@ -95,6 +65,7 @@ Sprite *spriteNew(float x, float y, float width, float height)
 
 void spriteDraw(Sprite *sprite) 
 {
+
 	glBindBuffer(GL_ARRAY_BUFFER, sprite->vboID);
 
 	glEnableVertexAttribArray(0);
@@ -113,6 +84,8 @@ void spriteDraw(Sprite *sprite)
 			2, 2, GL_FLOAT, GL_FALSE,
 			sizeof(Vertex), (void*)offsetof(Vertex, uv));
 
+	///
+	
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
 	glDisableVertexAttribArray(2);
