@@ -1,7 +1,7 @@
-# cColors
-OpenGL/SDL C program test
+# cGameEngine
 
+A small in progress C 2d game engine based on OpenGL Edit
 
-repends on elanthis/upng
+depends on elanthis/upng
 git submodule init
 git submodule update --remote
