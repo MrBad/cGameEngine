@@ -15,6 +15,12 @@ typedef enum {
 } GameStates;
 
 typedef struct {
+    GLuint textureID;
+    GLint offset;
+    GLsizei numVertices;
+} SpriteBatch;
+
+typedef struct {
 	Window *win;
 	GLProgram *prog;
 	Camera *cam;
@@ -22,6 +28,7 @@ typedef struct {
 	Texture *earthTex;
 	Texture *circleTex;
 	Sprite *sprites[1024]; // will be improved
+	SpriteBatch spriteBatches[1024]; // to be generated dynamically
 	GameStates state;
 
 	float camSpeed;

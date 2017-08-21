@@ -127,6 +127,16 @@ void gameHandleInput(Game *game)
 	}	
 }
 
+
+
+int sortByTexture(const void *a, const void *b) {
+	if ((*(Sprite **)a)->textureID < (*(Sprite **)b)->textureID)
+		return -1;
+	else if((*(Sprite **)a)->textureID > (*(Sprite **)b)->textureID)
+		return 1;
+	return 0;
+}
+
 void gameLoop(Game *game) 
 {
 
@@ -134,6 +144,8 @@ void gameLoop(Game *game)
 	Uint32 currTicks, prevTicks;
 	int numFrames = 0;
 
+
+	// building sprites //
 	for(i = 0; i < SIZE(game->sprites); i++) {
 		GLuint textureID = i % 2 == 0 ? game->earthTex->id : game->circleTex->id;
 		game->sprites[i] = spriteNew(
@@ -142,7 +154,14 @@ void gameLoop(Game *game)
 		Color color = {rand() % 255, rand() % 255, rand() % 255, 255};
 		spriteSetColor(game->sprites[i], &color);
 	}
+
+	qsort(game->sprites, SIZE(game->sprites), sizeof(Sprite *), sortByTexture);	
+	
+	for(i = 0; i < 8; i++) 
+		printf("%d %d\n", i, game->sprites[i]->textureID);
+
 	int numVertices = SIZE(game->sprites) * 6;
+
 	printf("sprites: %lu, numVertices: %d\n", SIZE(game->sprites), numVertices);
 
 	Vertex *vertices = calloc(1, numVertices * sizeof(Vertex));
@@ -197,19 +216,28 @@ void gameLoop(Game *game)
 		glUniformMatrix4fv(pLocation, 1, GL_FALSE, &(game->cam->cameraMatrix.m[0][0]));
 
 
-		glBindTexture(GL_TEXTURE_2D, game->circleTex->id);
-		GLint textureLocation = glGetUniformLocation(game->prog->programID, "mySampler");
-		glUniform1i(textureLocation, 0);
 
 		glBindVertexArray(vao);
 		
 		
 		int j = 0;
+		int numBatch = 0;
 		//
 		// build vertices based on new sprite type //
 		//
+		GLuint lastTextureID = game->sprites[0]->textureID;
+		game->spriteBatches[numBatch].textureID = lastTextureID;
+		game->spriteBatches[numBatch].offset = 0;
+		game->spriteBatches[numBatch].numVertices = 0;	
 		for(i = 0; i < SIZE(game->sprites); i++) {
 			
+			if(game->sprites[i]->textureID != lastTextureID) {
+				lastTextureID = game->sprites[i]->textureID;
+				numBatch++;
+				game->spriteBatches[numBatch].offset = i * 6;
+				game->spriteBatches[numBatch].textureID = lastTextureID;
+				game->spriteBatches[numBatch].numVertices = 0;
+			}	
 			spriteSetPos(game->sprites[i], game->sprites[i]->x+1, game->sprites[i]->y);
 			
 			Sprite *sp = game->sprites[i];
@@ -235,17 +263,31 @@ void gameLoop(Game *game)
 						game->sprites[i]->color.b, 
 						game->sprites[i]->color.a);
 			}
+
+			game->spriteBatches[numBatch].numVertices += 6;
 		}
-		/// this should not be...
-//		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		//glBufferData(GL_ARRAY_BUFFER, sizeof(game->sprites[0]->ventrices), game->sprites[0]->ventrices, GL_DYNAMIC_DRAW);
-		glBufferData(GL_ARRAY_BUFFER, numVertices*sizeof(Vertex), vertices, GL_DYNAMIC_DRAW);	
-		glDrawArrays(GL_TRIANGLES, 0, numVertices);
+		
+		glBufferData(GL_ARRAY_BUFFER, numVertices*sizeof(Vertex), vertices, GL_DYNAMIC_DRAW);
+	
+		// process batches //	
+		for(int i = 0; i <= numBatch; i++) {
+			glBindTexture(GL_TEXTURE_2D, game->spriteBatches[i].textureID);
+			GLint textureLocation = glGetUniformLocation(game->prog->programID, "mySampler");
+			glUniform1i(textureLocation, 0);
+			
+			//glDrawArrays(GL_TRIANGLES, 0, numVertices);
+			glDrawArrays(
+					GL_TRIANGLES, game->spriteBatches[i].offset, 
+					game->spriteBatches[i].numVertices);
+		
+		
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
+
 //		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		
 		glBindVertexArray(0);
 
-		glBindTexture(GL_TEXTURE_2D, 0);
 		glProgramUnuse(game->prog);
 
 		windowUpdate(game->win);
