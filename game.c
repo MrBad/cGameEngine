@@ -39,7 +39,6 @@ static bool gameInitShaders(Game *game)
 
 bool gameInit(Game *game, int winWidth, int winHeight, const char *title) 
 {
-	unsigned int i;
 
 	game->state = GAME_PLAYING;
 	if(!(game->win = windowNew(title, winWidth, winHeight, 0))) {
@@ -60,9 +59,6 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 		fprintf(stderr, "Cannot init Sprite\n");
 		return false;
 	}*/
-	for(i = 0; i < SIZE(game->sprites); i++) {
-		game->sprites[i] = spriteNew(i*128, i* 96 + (rand() % 100), 128, 96);	
-	}
 	
 	if(!(game->texture = loadTexture("resources/earth.png"))) {
 		fprintf(stderr, "Cannot load texture\n");
@@ -133,8 +129,24 @@ void gameHandleInput(Game *game)
 
 void gameLoop(Game *game) 
 {
-	//float time = 0;
+
+	unsigned int i;
+	Uint32 currTicks, prevTicks;
+	int numFrames = 0;
+	for(i = 0; i < SIZE(game->sprites); i++) {
+		game->sprites[i] = spriteNew(i*128, i* 96 + (rand() % 100), 128, 96);	
+	}
+	prevTicks = currTicks = SDL_GetTicks();
 	while(game->state == GAME_PLAYING) {
+
+		currTicks = SDL_GetTicks();
+		if(currTicks - prevTicks > 1000) {
+			prevTicks = currTicks;
+			printf("FPS: %d\n", numFrames);
+			numFrames = 0;
+		}
+		numFrames++;
+
 		inMgrUpdate(game->inmgr);
 		if(game->inmgr->quitRequested) {
 			game->state = GAME_OVER;
@@ -142,7 +154,6 @@ void gameLoop(Game *game)
 
 		gameHandleInput(game);
 		cameraUpdate(game->cam);
-		//time += 0.05f;
 		windowClear();
 
 		glProgramUse(game->prog);
@@ -151,14 +162,10 @@ void gameLoop(Game *game)
 		glBindTexture(GL_TEXTURE_2D, game->texture->id);
 		GLint textureLocation = glGetUniformLocation(game->prog->programID, "mySampler");
 		glUniform1i(textureLocation, 0);
-		
-		// send time to shader
-        //GLint timeLocation = glGetUniformLocation(game->prog->programID, "time");
-        //glUniform1f(timeLocation, time);
 
-        // send matrix location
-        GLint pLocation = glGetUniformLocation(game->prog->programID, "P");
-        glUniformMatrix4fv(pLocation, 1, GL_FALSE, &(game->cam->cameraMatrix.m[0][0]));
+		// send matrix location
+		GLint pLocation = glGetUniformLocation(game->prog->programID, "P");
+		glUniformMatrix4fv(pLocation, 1, GL_FALSE, &(game->cam->cameraMatrix.m[0][0]));
 
 		//
 		//spriteBatchBegin()
@@ -167,14 +174,24 @@ void gameLoop(Game *game)
 		//spriteBatchRender()
 		//
 		//spriteDraw(game->sprite);
-		unsigned int i;
+		int x, y;
+		for(i = 0; i < SIZE(game->sprites); i++) {
+			x = game->sprites[i]->x;
+			y = game->sprites[i]->y;
+			spriteSetPos(game->sprites[i], x + 1, y);
+		}
 		for(i = 0; i < SIZE(game->sprites); i++) {
 			spriteDraw(game->sprites[i]);
 		}
 
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glProgramUnuse(game->prog);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glProgramUnuse(game->prog);
 
-        windowUpdate(game->win);
+		windowUpdate(game->win);
+
+
+	}
+	for(i = 0; i < SIZE(game->sprites); i++) {
+		spriteDelete(game->sprites[i]);
 	}
 }

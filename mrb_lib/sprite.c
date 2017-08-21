@@ -6,6 +6,41 @@
 #include "vertex.h"
 #include "sprite.h"
 
+
+void spriteSetPos(Sprite *sprite, float x, float y) 
+{
+	sprite->x = x;
+	sprite->y = y;
+	
+
+	Vertex ventrices[6];
+	vertexSetPos(ventrices+0, x + sprite->width, y + sprite->height);
+	vertexSetUV(ventrices+0, 1, 1);
+	
+	vertexSetPos(ventrices+1, x, y + sprite->height);
+	vertexSetUV(ventrices+1, 0, 1);
+	
+	vertexSetPos(ventrices+2, x, y);
+	vertexSetUV(ventrices+2, 0, 0);
+	
+	vertexSetPos(ventrices+3, x, y);
+	vertexSetUV(ventrices+3, 0,  0);
+	
+	vertexSetPos(ventrices+4, x + sprite->width, y);
+	vertexSetUV(ventrices+4, 1, 0);
+	
+	vertexSetPos(ventrices+5, x + sprite->width, y + sprite->height);
+	vertexSetUV(ventrices+5, 1, 1);
+	
+	for(int i = 0; i < 6; i++) {
+		vertexSetColor(ventrices + i, 255, 0, 255, 255);
+	}
+	
+	glBindBuffer(GL_ARRAY_BUFFER, sprite->vboID);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(ventrices), ventrices, GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
 Sprite *spriteNew(float x, float y, float width, float height) 
 {
 	Sprite *sprite = calloc(1, sizeof(Sprite));
@@ -56,6 +91,7 @@ Sprite *spriteNew(float x, float y, float width, float height)
 
 	return sprite;
 }
+
 
 void spriteDraw(Sprite *sprite) 
 {

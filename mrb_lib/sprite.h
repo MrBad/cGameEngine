@@ -10,6 +10,7 @@ typedef struct {
 } Sprite;
 
 Sprite* spriteNew(float x, float y, float width, float height);
+void spriteSetPos(Sprite *sprite, float x, float y);
 void spriteDraw(Sprite *sprite);
 void spriteDelete(Sprite *sprite);
 
