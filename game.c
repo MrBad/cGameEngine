@@ -59,7 +59,11 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 		return false;
 	}*/
 	
-	if(!(game->texture = loadTexture("resources/earth.png"))) {
+	if(!(game->earthTex = loadTexture("resources/earth.png"))) {
+		fprintf(stderr, "Cannot load texture\n");
+		return false;	
+	}
+	if(!(game->circleTex = loadTexture("resources/circle.png"))) {
 		fprintf(stderr, "Cannot load texture\n");
 		return false;	
 	}
@@ -129,13 +133,19 @@ void gameLoop(Game *game)
 	unsigned int i;
 	Uint32 currTicks, prevTicks;
 	int numFrames = 0;
+
 	for(i = 0; i < SIZE(game->sprites); i++) {
+		GLuint textureID = i % 2 == 0 ? game->earthTex->id : game->circleTex->id;
 		game->sprites[i] = spriteNew(
 				i*128, i*96 + (rand() % 100), 
-				128, 96, game->texture->id);
+				128, 96, textureID);
+		Color color = {rand() % 255, rand() % 255, rand() % 255, 255};
+		spriteSetColor(game->sprites[i], &color);
 	}
-	int numVertices = SIZE(game->sprites) * sizeof(Vertex) * 6;
-	Vertex *vertices = malloc(numVertices);
+	int numVertices = SIZE(game->sprites) * 6;
+	printf("sprites: %lu, numVertices: %d\n", SIZE(game->sprites), numVertices);
+
+	Vertex *vertices = calloc(1, numVertices * sizeof(Vertex));
 	GLuint vao, vbo;
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
@@ -154,7 +164,8 @@ void gameLoop(Game *game)
 	glVertexAttribPointer(
 			2, 2, GL_FLOAT, GL_FALSE,
 			sizeof(Vertex), (void *)offsetof(Vertex, uv));
-	glDisableVertexAttribArray(vao);
+
+	glBindVertexArray(0);
 
 	prevTicks = currTicks = SDL_GetTicks();
 
@@ -186,48 +197,53 @@ void gameLoop(Game *game)
 		glUniformMatrix4fv(pLocation, 1, GL_FALSE, &(game->cam->cameraMatrix.m[0][0]));
 
 
-		/*int x, y;
-		  for(i = 0; i < SIZE(game->sprites); i++) {
-
-		// bind sprite texture
-		glBindTexture(GL_TEXTURE_2D, game->texture->id);
+		glBindTexture(GL_TEXTURE_2D, game->circleTex->id);
 		GLint textureLocation = glGetUniformLocation(game->prog->programID, "mySampler");
 		glUniform1i(textureLocation, 0);
 
-		x = game->sprites[i]->x;
-		y = game->sprites[i]->y;
-		spriteSetPos(game->sprites[i], x + 1, y);
-		spriteDraw(game->sprites[i]);
-		}*/
-
-
-		glBindTexture(GL_TEXTURE_2D, game->texture->id);
-		GLint textureLocation = glGetUniformLocation(game->prog->programID, "mySampler");
-		glUniform1i(textureLocation, 0);
-
-		glEnableVertexAttribArray(vao);
+		glBindVertexArray(vao);
+		
+		
 		int j = 0;
-
+		//
+		// build vertices based on new sprite type //
+		//
 		for(i = 0; i < SIZE(game->sprites); i++) {
+			
 			spriteSetPos(game->sprites[i], game->sprites[i]->x+1, game->sprites[i]->y);
-			// copy buffers //
+			
+			Sprite *sp = game->sprites[i];
+			vertexSetPos(vertices + i*6 + 0, sp->x + sp->width, sp->y + sp->height);
+			vertexSetPos(vertices + i*6 + 1, sp->x,				sp->y + sp->height); 	
+			vertexSetPos(vertices + i*6 + 2, sp->x,				sp->y			  ); 	
+			vertexSetPos(vertices + i*6 + 3, sp->x,				sp->y			  ); 	
+			vertexSetPos(vertices + i*6 + 4, sp->x + sp->width, sp->y			  ); 	
+			vertexSetPos(vertices + i*6 + 5, sp->x + sp->width, sp->y + sp->height);
+
+			vertexSetUV(vertices + i*6 + 0, 1, 1);	
+			vertexSetUV(vertices + i*6 + 1, 0, 1);	
+			vertexSetUV(vertices + i*6 + 2, 0, 0);	
+			vertexSetUV(vertices + i*6 + 3, 0, 0);	
+			vertexSetUV(vertices + i*6 + 4, 1, 0);	
+			vertexSetUV(vertices + i*6 + 5, 1, 1);	
+			
 			for(j = 0; j < 6; j++) {
-				vertices[i*6 + j].pos.x = game->sprites[i]->ventrices[j].pos.x;
-				vertices[i*6 + j].pos.y = game->sprites[i]->ventrices[j].pos.y;
-				vertices[i*6 + j].uv.u = game->sprites[i]->ventrices[j].uv.u;
-				vertices[i*6 + j].uv.v = game->sprites[i]->ventrices[j].uv.v;
-				vertices[i*6 + j].color.r = game->sprites[i]->ventrices[j].color.r;
-				vertices[i*6 + j].color.g = game->sprites[i]->ventrices[j].color.g;
-				vertices[i*6 + j].color.b = game->sprites[i]->ventrices[j].color.b;
-				vertices[i*6 + j].color.a = game->sprites[i]->ventrices[j].color.a;
+				vertexSetColor(
+					vertices + i * 6 + j, 
+					game->sprites[i]->color.r, 
+						game->sprites[i]->color.g, 
+						game->sprites[i]->color.b, 
+						game->sprites[i]->color.a);
 			}
 		}
-		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		/// this should not be...
+//		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		//glBufferData(GL_ARRAY_BUFFER, sizeof(game->sprites[0]->ventrices), game->sprites[0]->ventrices, GL_DYNAMIC_DRAW);
-		glBufferData(GL_ARRAY_BUFFER, numVertices, vertices, GL_DYNAMIC_DRAW);	
-		glDrawArrays(GL_TRIANGLES, 0, numVertices/6);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-
+		glBufferData(GL_ARRAY_BUFFER, numVertices*sizeof(Vertex), vertices, GL_DYNAMIC_DRAW);	
+		glDrawArrays(GL_TRIANGLES, 0, numVertices);
+//		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		
+		glBindVertexArray(0);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
 		glProgramUnuse(game->prog);
@@ -236,12 +252,13 @@ void gameLoop(Game *game)
 
 
 	}
+	//
 	glDisableVertexAttribArray(2);
 	glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
+	glDisableVertexAttribArray(vao);
 	free(vertices);
 	for(i = 0; i < SIZE(game->sprites); i++) {
 		spriteDelete(game->sprites[i]);

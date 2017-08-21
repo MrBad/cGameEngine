@@ -19,7 +19,8 @@ typedef struct {
 	GLProgram *prog;
 	Camera *cam;
 	InMgr *inmgr;
-	Texture *texture;
+	Texture *earthTex;
+	Texture *circleTex;
 	Sprite *sprites[1024]; // will be improved
 	GameStates state;
 
