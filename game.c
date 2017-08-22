@@ -4,6 +4,9 @@
 #include <math.h>
 #include "game.h"
 #include "mrb_lib/sprite_batch.h"
+#include "level.h"
+
+
 
 #define SIZE(a) sizeof(a)/sizeof(*a)
 
@@ -49,31 +52,29 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 		return false;
 	}
 	srand(time(NULL));
-	/*
-	if(!(game->sprite = spriteNew(0,0, winWidth / 2, winHeight / 2))) {
-		fprintf(stderr, "Cannot init Sprite\n");
-		return false;
-	}*/
+
 	
-	if(!(game->earthTex = loadTexture("resources/earth.png"))) {
-		fprintf(stderr, "Cannot load texture\n");
-		return false;	
-	}
-	if(!(game->circleTex = loadTexture("resources/circle.png"))) {
-		fprintf(stderr, "Cannot load texture\n");
-		return false;	
-	}
 	if(!(game->prog = glProgramNew())) {
 		fprintf(stderr, "Cannot init glProgram\n");
 		return false;	
 	}
 	gameInitShaders(game);
 
+
+	// create a sprite batch
+	game->spriteBatch = sbNew(game->prog);
+
+	// init the sprite batch
+	sbInit(game->spriteBatch);
+
+	loadLevel(game, "resources/level1.txt");
+	
 	game->camSpeed = 5.0f;
 	game->scaleSpeed = 1.02f;
+	
 
-	printf("Size of vertex: %lu\n", sizeof(Vertex) * 6 * 1024);
-
+	cameraSetPosition(game->cam, game->player->x, game->player->y);
+	
 	return true;
 }
 
@@ -91,14 +92,16 @@ void gameDelete(Game *game)
 		cameraDelete(game->cam);
 		game->cam = NULL;
 	}
-	if(game->circleTex) {
-		free(game->circleTex);
-		game->circleTex = NULL;
+	for(int i = 0; i < 4; i++) {
+		if(game->level.textures[i]) {
+			free(game->level.textures[i]);
+		}
 	}
-	if(game->earthTex) {
-		free(game->earthTex);
-		game->earthTex = NULL;
+	for(int i = 0; i < game->spriteBatch->spritesLen; i++) {
+		if(game->spriteBatch->sprites[i])
+			spriteDelete(game->spriteBatch->sprites[i]);
 	}
+	sbDelete(game->spriteBatch);	
 	windowDelete(game->win);
 	free(game);
 
@@ -109,19 +112,30 @@ void gameHandleInput(Game *game)
 
 	InMgr *inmgr = game->inmgr;
 	Camera *camera = game->cam;	
-	float camSpeed = game->camSpeed;
+	//float camSpeed = game->camSpeed;
 	float scaleSpeed = game->scaleSpeed;
+	float playerSpeed = 10;
+	Sprite *player = game->player;
 	if(inMgrIsKeyPressed(inmgr, IM_KEY_A)) {
-		cameraSetPosition(camera, camera->position.x-camSpeed, camera->position.y);
+		spriteSetPos(player, player->x - playerSpeed, player->y);
+		cameraSetPosition(camera, player->x, player->y);
+		//cameraSetPosition(camera, camera->position.x-camSpeed, camera->position.y);
 	}
 	if(inMgrIsKeyPressed(inmgr, IM_KEY_D)) {
-		cameraSetPosition(camera, camera->position.x+camSpeed, camera->position.y);
+		spriteSetPos(player, player->x + playerSpeed, player->y);
+		cameraSetPosition(camera, player->x, player->y);
+		//cameraSetPosition(camera, camera->position.x+camSpeed, camera->position.y);
 	}
 	if(inMgrIsKeyPressed(inmgr, IM_KEY_W)) {
-		cameraSetPosition(camera, camera->position.x, camera->position.y+camSpeed);
+		spriteSetPos(player, player->x, player->y+playerSpeed);
+		cameraSetPosition(camera, player->x, player->y);
+		//cameraSetPosition(camera, camera->position.x, camera->position.y+camSpeed);
 	}
 	if(inMgrIsKeyPressed(inmgr, IM_KEY_S)) {
-		cameraSetPosition(camera, camera->position.x, camera->position.y-camSpeed);
+
+		spriteSetPos(player, player->x, player->y-playerSpeed);
+		cameraSetPosition(camera, player->x, player->y);
+		//cameraSetPosition(camera, camera->position.x, camera->position.y-camSpeed);
 	}
 	if(inMgrIsKeyPressed(inmgr, IM_KEY_Q)) {
 		cameraSetScale(camera, camera->scale * scaleSpeed);
@@ -137,28 +151,9 @@ void gameHandleInput(Game *game)
 void gameLoop(Game *game) 
 {
 
-	unsigned int i;
 	Uint32 currTicks, prevTicks;
 	int numFrames = 0;
 
-
-	// create a sprite batch
-	game->spriteBatch = sbNew(game->prog);
-
-	// init the sprite batch
-	sbInit(game->spriteBatch);
-
-	// building sprites and add them to batch //
-	for(i = 0; i < 1024; i++) {
-		GLuint textureID = 
-			i % 2 == 0 ? game->earthTex->id : game->circleTex->id;
-		Sprite *sprite = spriteNew(
-				i*128, i*96 + (rand() % 100), 
-				128, 96, textureID);
-		Color color = {rand() % 255, rand() % 255, rand() % 255, 255};
-		spriteSetColor(sprite, &color);
-		sbAddSprite(game->spriteBatch, sprite);
-	}
 
 
 	prevTicks = currTicks = SDL_GetTicks();
@@ -190,9 +185,9 @@ void gameLoop(Game *game)
 		GLint pLocation = glGetUniformLocation(game->prog->programID, "P");
 		glUniformMatrix4fv(pLocation, 1, GL_FALSE, 
 				&(game->cam->cameraMatrix.m[0][0]));
-		
+
 		for(int i = 0; i < game->spriteBatch->spritesLen; i++) {
-			game->spriteBatch->sprites[i]->x += 1;
+		//	game->spriteBatch->sprites[i]->x += 1;
 		}		
 		// build vertices based on new sprite type //
 		sbBuildBatches(game->spriteBatch);
@@ -212,9 +207,4 @@ void gameLoop(Game *game)
 	//
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	for(int i = 0; i < game->spriteBatch->spritesLen; i++) {
-		if(game->spriteBatch->sprites[i])
-			spriteDelete(game->spriteBatch->sprites[i]);
-	}
-	sbDelete(game->spriteBatch);	
 }

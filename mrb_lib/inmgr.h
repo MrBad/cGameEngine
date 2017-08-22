@@ -17,6 +17,7 @@ enum {
 	IM_KEY_S,
 	IM_KEY_Q,
 	IM_KEY_E,
+	IM_KEY_X,
 	IM_KEY_LEN,
 };
 

@@ -22,7 +22,7 @@ typedef struct {
 	Sprite **sprites; // ptr to ptrs to sprites
 	int spritesSize;
 	int spritesLen;
-
+	bool needsSort;
 	GLuint vao, vbo;
 	GLProgram *prog;
 } SpriteBatch;
@@ -31,6 +31,7 @@ typedef struct {
 SpriteBatch *sbNew(GLProgram *program);
 void sbInit(SpriteBatch *sb); //
 int sbAddSprite(SpriteBatch *sb, Sprite *sp);
+bool sbDeleteSprite(SpriteBatch *sb, Sprite *sp);
 void sbBuildBatches(SpriteBatch *sb);
 void sbDrawBatches(SpriteBatch *sb);
 void sbDelete(SpriteBatch *sb);

@@ -18,7 +18,6 @@ unsigned char *file_get(const char *path, int *size)
 	}
 	*size = st.st_size;
 	buff = malloc(*size + 1);
-	printf("%p\n", buff);
 	if(!buff) {
 		fprintf(stderr, "Cannot malloc buffer\n");
 		return NULL;

@@ -26,6 +26,7 @@ static void setKeyBuf(unsigned char *buf, int sdlKey, int val)
 		case SDLK_s:		buf[IM_KEY_S]		= val; break;
 		case SDLK_q:		buf[IM_KEY_Q]		= val; break;
 		case SDLK_e:		buf[IM_KEY_E]		= val; break;
+		case SDLK_x:		buf[IM_KEY_X]		= val; break;
 	}
 }
 

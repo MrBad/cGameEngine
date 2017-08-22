@@ -22,7 +22,7 @@ SpriteBatch *sbNew(GLProgram *prog)
 	sb->sprites = NULL;
 	sb->spritesSize = 0;
 	sb->spritesLen = 0;
-
+	sb->needsSort = true;
 	sb->vao = sb->vbo = 0;
 	sb->prog = prog;
 	
@@ -98,10 +98,36 @@ int sbAddSprite(SpriteBatch *sb, Sprite *sp)
 		if(! sb->sprites[i]) {
 			sb->sprites[i] = sp;
 			sb->spritesLen++;
+			sb->needsSort = true;
 			return i;
 		}
 	}
 	return -1;
+}
+
+bool sbDeleteSprite(SpriteBatch *sb, Sprite *sp) 
+{
+	int i, j;
+	bool found = false;
+	for(i = 0; i < sb->spritesLen; i++) {
+		if(sb->sprites[i] == sp) {
+			printf("found sprite at %d index\n", i);
+			found = true;
+			for(j = i; j < sb->spritesLen;j++) {
+				if(sb->sprites[j+1])
+					sb->sprites[j] = sb->sprites[j+1];
+				else 
+					sb->sprites[j] = 0;
+			}
+			sb->spritesLen--;
+			sb->needsSort = true;
+			break;
+		}
+	}
+	if(!found) {
+		fprintf(stderr, "Cannot find sprite: %p\n", sp);
+	}
+	return found;
 }
 
 static int getFreeRenderBatch(SpriteBatch *sb) 
@@ -142,9 +168,13 @@ static int sortByTexture(const void *a, const void *b)
 	return 0;
 }
 
-static void sbSort(SpriteBatch *sp)
+static void sbSort(SpriteBatch *sb)
 {
-	qsort(sp->sprites, sp->spritesLen, sizeof(Sprite *), sortByTexture);
+	if(sb->needsSort) {
+		printf("Sorting sprites\n");
+		qsort(sb->sprites, sb->spritesLen, sizeof(Sprite *), sortByTexture);
+		sb->needsSort = false;
+	}
 }
 
 
@@ -155,7 +185,9 @@ void sbBuildBatches(SpriteBatch *sb)
 	int numBatch = 0, i, j;
 
 	lastTextureId = 0;
+	//
 	sbSort(sb);
+
 	if(sb->spritesLen == 0) {
 		printf("sprites len is 0\n");
 		exit(1);
@@ -208,7 +240,6 @@ void sbBuildBatches(SpriteBatch *sb)
 		sb->renderBatches[numBatch]->numVertices += 6;
 	}
 	sb->verticesLen = i * 6;
-
 }
 
 void sbDrawBatches(SpriteBatch *sb) 

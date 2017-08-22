@@ -9,6 +9,7 @@
 #include "mrb_lib/inmgr.h"
 #include "mrb_lib/sprite_batch.h"
 
+
 typedef enum {
 	GAME_PLAYING,
 	GAME_OVER,
@@ -21,15 +22,18 @@ typedef struct {
 	InMgr *inmgr;
 	Texture *earthTex;
 	Texture *circleTex;
-	Sprite *sprites[1024]; // will be improved
-	SpriteBatch spriteBatches[1024]; // to be generated dynamically
-	
 	SpriteBatch *spriteBatch;
 	GameStates state;
 
 	float camSpeed;
 	float scaleSpeed;
+	
+	struct {
+		int numHumans;
+		Texture *textures[32];
+	} level;
 
+	Sprite *player;
 } Game;
 
 
