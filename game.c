@@ -211,6 +211,10 @@ void gameLoop(Game *game)
 	}
 	//
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	sbDelete(game->spriteBatch);
-	
+
+	for(int i = 0; i < game->spriteBatch->spritesLen; i++) {
+		if(game->spriteBatch->sprites[i])
+			spriteDelete(game->spriteBatch->sprites[i]);
+	}
+	sbDelete(game->spriteBatch);	
 }

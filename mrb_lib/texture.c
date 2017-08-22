@@ -1,24 +1,19 @@
 #include <stdio.h>
 #include "texture.h"
-#include "file_buf.h"
+#include "file_get.h"
 #include "upng/upng.h"
 
 Texture *loadTexture(const char *filePath) 
 {
-	FileBuf *fBuf = fileBufNew(filePath);
 	Texture *texture = NULL;
-	if(!fBuf) {
-		fprintf(stderr, "Cannot create buf for: %s\n", filePath);
-		return NULL;
-	}
-	if(fileBufLoad(fBuf) < 0) {
-		fprintf(stderr, "Cannot read: %s\n", filePath);
-		return NULL;
-	}
-	upng_t *png = upng_new_from_bytes((const unsigned char*)fBuf->data, fBuf->size);
+	unsigned char *buff = NULL;
+	int size;
+	buff = file_get(filePath, &size);
+
+	upng_t *png = upng_new_from_bytes(buff, size);
 	if(!png) {
 		fprintf(stderr, "Cannot convert png\n");
-		fileBufDelete(fBuf);
+		free(buff);
 		upng_free(png);
 		return NULL;
 	}
@@ -46,7 +41,7 @@ Texture *loadTexture(const char *filePath)
         glBindTexture(GL_TEXTURE_2D, 0);
 	}
 	upng_free(png);
-	fileBufDelete(fBuf);
+	free(buff);
 
 	return texture;	
 }

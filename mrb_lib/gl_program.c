@@ -3,45 +3,21 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include "error.h"
-#include "file_buf.h"
+#include "file_get.h"
 #include "gl_program.h"
 
 
 static void compileShader(const char *fullPath, GLuint shaderID) 
 {
-	/*struct stat st;
-	char *content;
-	FILE *fp;
-	int n_bytes, n_read, left;
-	// read file //
-	if(stat(fullPath, &st) < 0)
-		fatalError("Cannot stat %s\n", fullPath);
-	
-	content = malloc(st.st_size + 1);
-	
-	if(!(fp = fopen(fullPath, "r")))
-		fatalError("Cannot open %s\n", fullPath);
-	if(!content)
-		fatalError("Cannot malloc content buff");
-	
-	n_read = 0; 
-	left = st.st_size;
-	while(left > 0) {
-		n_bytes = fread(content + n_read, 1, left, fp);
-		left -= n_bytes;
-		n_read += n_bytes;
-	}
-	content[st.st_size] = 0;
-	*/
-
-	FileBuf *fBuf = fileBufNew(fullPath);
-	if(!fBuf) {
+	unsigned char *buff = NULL;
+	int size;
+	buff = file_get(fullPath, &size);
+	if(size < 0) {
 		fatalError("Cannot open: %s\n", fullPath);
 	}
-	fileBufLoad(fBuf);
 
 	//glShaderSource(shaderID, 1, (const GLchar**)&content, NULL);
-	glShaderSource(shaderID, 1, (const GLchar**)&fBuf->data, NULL);
+	glShaderSource(shaderID, 1, (const GLchar**)&buff, NULL);
 	glCompileShader(shaderID);
 	
 	// error handling //
@@ -60,7 +36,7 @@ static void compileShader(const char *fullPath, GLuint shaderID)
 
 	//free(content);
 	//fclose(fp);
-	fileBufDelete(fBuf);
+	free(buff);
 }
 
 GLProgram* glProgramNew() 

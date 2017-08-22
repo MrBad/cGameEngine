@@ -219,7 +219,9 @@ void sbDrawBatches(SpriteBatch *sb)
 	glBindBuffer(GL_ARRAY_BUFFER, sb->vbo);
 	glBufferData(GL_ARRAY_BUFFER, sb->verticesLen * sizeof(Vertex), 
 			sb->vertices, GL_DYNAMIC_DRAW);	 // send data to GPU
+	
 	glProgramUse(sb->prog);
+	
 	glActiveTexture(GL_TEXTURE0);
 	
 	for(i = 0; i < sb->rbLen; i++) {
@@ -235,7 +237,7 @@ void sbDrawBatches(SpriteBatch *sb)
 	
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
-	
+	glProgramUnuse(sb->prog);
 	for(i = 0; i < sb->rbLen; i++) {
 		free(sb->renderBatches[i]);
 		sb->renderBatches[i] = 0;
