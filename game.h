@@ -7,18 +7,12 @@
 #include "mrb_lib/gl_program.h"
 #include "mrb_lib/camera.h"
 #include "mrb_lib/inmgr.h"
-
+#include "mrb_lib/sprite_batch.h"
 
 typedef enum {
 	GAME_PLAYING,
 	GAME_OVER,
 } GameStates;
-
-typedef struct {
-    GLuint textureID;
-    GLint offset;
-    GLsizei numVertices;
-} SpriteBatch;
 
 typedef struct {
 	Window *win;
@@ -29,6 +23,8 @@ typedef struct {
 	Texture *circleTex;
 	Sprite *sprites[1024]; // will be improved
 	SpriteBatch spriteBatches[1024]; // to be generated dynamically
+	
+	SpriteBatch *spriteBatch;
 	GameStates state;
 
 	float camSpeed;
