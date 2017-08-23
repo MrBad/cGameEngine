@@ -7,7 +7,7 @@ CFLAGS=-g -Wall -Wextra -std=c99 -pedantic -I$(INCLUDE)
 MAKE=make
 
 TARGET=cgame
-OBJECTS=main.o game.o level.o user.o
+OBJECTS=main.o game.o level.o user.o collision.o
 
 all: $(OBJECTS) Makefile mrb_lib/mrb_lib.a
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJECTS) $(LIBS)

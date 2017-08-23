@@ -16,11 +16,13 @@ typedef enum {
 typedef struct {
 	Vec2f pos;
 	float speed;
+	Vec2f direction;
 	Sprite *sprite;
 	UserType type;
 } User;
 
 User *userNew(Vec2f pos, float speed, Sprite *sprite, UserType type);
+void userSetPos(User *user, Vec2f pos);
 void userDelete(User *user);
 
 

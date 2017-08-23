@@ -1,16 +1,3 @@
-#if 0
-#include <stdio.h>
-#include <SDL2/SDL.h>
-#include <GL/glew.h>
-#include "window.h"
-#include "error.h"
-#include "sprite.h"
-#include "gl_program.h"
-#include "texture.h"
-#include "camera.h"
-#include "inmgr.h"
-#endif
-
 
 #include "game.h"
 

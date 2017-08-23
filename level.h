@@ -26,6 +26,7 @@ typedef struct {
 	int textureSize;
 	int textureLen;
 	SpriteBatch *mapBatch; // holds the map sprite batch
+	int maxWidth, maxHeight; // map width and height - top right corner
 } Level;
 
 Level *levelNew(char *path);

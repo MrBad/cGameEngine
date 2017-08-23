@@ -20,6 +20,7 @@ Level *levelNew(char *path)
 		level->textureLen = 0;
 		level->textureSize = 0;	
 		level->mapBatch = NULL;
+		level->maxWidth = level->maxHeight = 0;
 	}
 	return level;
 }
@@ -36,6 +37,7 @@ void levelDelete(Level *level)
 	if(level->textures) {
 		for(i = 0; i < NUM_TEXTURES; i++) {
 			if(level->textures[i])
+				glDeleteTextures(1, &level->textures[i]->id);
 				free(level->textures[i]);
 		}
 		free(level->textures);
@@ -62,6 +64,7 @@ static int allocZombiePosition(Level *level)
 			fprintf(stderr, "Cannot realloc zombie buffer\n");
 			return -1;
 		}
+		level->zombiesSize = numElements;
 	}
 	int index = level->zombiesLen++;	
 	return index;
@@ -148,6 +151,8 @@ bool loadLevel(Level *level, GLProgram *prog)
 		sp = spriteNew(x, y, 64, 64, texture->id);
 		spriteSetColor(sp, &color);
 		sbAddSprite(level->mapBatch, sp);
+		level->maxWidth = x > level->maxWidth ? x : level->maxWidth;
+		level->maxHeight = y > level->maxHeight ? y : level->maxHeight;
 	}
 
 	return true;	

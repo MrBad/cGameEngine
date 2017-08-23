@@ -40,6 +40,10 @@ void spriteSetColor(Sprite *sp, Color *color)
 
 void spriteSetTextureID(Sprite *sp, GLuint textureID) 
 {
+	if(textureID <= 0) {
+		fprintf(stderr, "Invalid Texture iD: %d\n", textureID);
+		exit(1);
+	}
 	sp->textureID = textureID;
 	sp->dirty = true;
 }

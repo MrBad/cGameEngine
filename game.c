@@ -2,19 +2,18 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+
 #include "game.h"
-#include "mrb_lib/sprite_batch.h"
 #include "level.h"
-
-
-
+#include "collision.h"
+#include <math.h>
 #define SIZE(a) sizeof(a)/sizeof(*a)
 
 Game *gameNew() 
 {
 	Game *game;
 
-	if(!(game = malloc(sizeof(*game)))) {
+	if(!(game = calloc(1, sizeof(*game)))) {
 		fprintf(stderr, "Cannot alloc memory for Game\n");
 		return NULL;
 	}
@@ -81,30 +80,21 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 	game->scaleSpeed = 1.02f;
 	
 
-	cameraSetPosition(game->cam, game->level->playerPos.x, game->level->playerPos.x);
-	
-
 	// create new user batch //
 	game->usersBatch = sbNew(game->prog);
 	sbInit(game->usersBatch);
 
-	// init player //
-	Vec2f pos = game->level->playerPos;
-	float speed = 1.0f;
-	Sprite *sprite = spriteNew(
-			pos.x, pos.y, USER_WIDTH, USER_HEIGHT, 
-			game->level->textures[CIRCLE_TEX]->id);
-	game->player = userNew(pos, speed, sprite, PLAYER);
-
-	// add the sprite to users batches
-	sbAddSprite(game->usersBatch, game->player->sprite);
+	initHumans(game);
+	initZombies(game);
+	initPlayer(game);
 	
-
+	cameraSetPosition(game->cam, game->player->pos.x, game->player->pos.y);
 	return true;
 }
 
 void gameDelete(Game *game) 
 {
+	int i;
 	if(game->prog) {
 		glProgramDelete(game->prog);
 		game->prog = NULL;
@@ -117,11 +107,25 @@ void gameDelete(Game *game)
 		cameraDelete(game->cam);
 		game->cam = NULL;
 	}
-	for(int i = 0; i < 4; i++) {
-		if(game->level->textures[i]) {
-			free(game->level->textures[i]);
+
+	for(i = 0; i < game->zombiesLen; i++) {
+		if(game->zombies[i]) {
+			spriteDelete(game->zombies[i]->sprite);
+			userDelete(game->zombies[i]);
 		}
 	}
+	for(i = 0; i < game->humansLen; i++) {
+		if(game->humans[i])
+			spriteDelete(game->humans[i]->sprite);
+			userDelete(game->humans[i]);
+	}
+
+	free(game->zombies);
+	free(game->humans);
+
+	userDelete(game->player);
+
+	sbDelete(game->usersBatch);
 	levelDelete(game->level);
 
 	windowDelete(game->win);
@@ -136,28 +140,29 @@ void gameHandleInput(Game *game)
 	Camera *camera = game->cam;	
 	//float camSpeed = game->camSpeed;
 	float scaleSpeed = game->scaleSpeed;
-	float playerSpeed = 10;
-	Sprite *player = game->player->sprite;
+	User *player = game->player;
+
 	if(inMgrIsKeyPressed(inmgr, IM_KEY_A)) {
-		spriteSetPos(player, player->x - playerSpeed, player->y);
-		cameraSetPosition(camera, player->x, player->y);
-		//cameraSetPosition(camera, camera->position.x-camSpeed, camera->position.y);
+		Vec2f pos = { player->pos.x-player->speed, player->pos.y };
+		userSetPos(player, pos);
+		cameraSetPosition(camera, pos.x, pos.y);
 	}
+	
 	if(inMgrIsKeyPressed(inmgr, IM_KEY_D)) {
-		spriteSetPos(player, player->x + playerSpeed, player->y);
-		cameraSetPosition(camera, player->x, player->y);
-		//cameraSetPosition(camera, camera->position.x+camSpeed, camera->position.y);
+		Vec2f pos = { player->pos.x + player->speed, player->pos.y };
+		userSetPos(player, pos);
+		cameraSetPosition(camera, pos.x, pos.y);
 	}
+
 	if(inMgrIsKeyPressed(inmgr, IM_KEY_W)) {
-		spriteSetPos(player, player->x, player->y+playerSpeed);
-		cameraSetPosition(camera, player->x, player->y);
-		//cameraSetPosition(camera, camera->position.x, camera->position.y+camSpeed);
+		Vec2f pos = { player->pos.x, player->pos.y + player->speed};
+		userSetPos(player, pos);
+		cameraSetPosition(camera, pos.x, pos.y);
 	}
 	if(inMgrIsKeyPressed(inmgr, IM_KEY_S)) {
-
-		spriteSetPos(player, player->x, player->y-playerSpeed);
-		cameraSetPosition(camera, player->x, player->y);
-		//cameraSetPosition(camera, camera->position.x, camera->position.y-camSpeed);
+		Vec2f pos = { player->pos.x, player->pos.y - player->speed};
+		userSetPos(player, pos);
+		cameraSetPosition(camera, pos.x, pos.y);
 	}
 	if(inMgrIsKeyPressed(inmgr, IM_KEY_Q)) {
 		cameraSetScale(camera, camera->scale * scaleSpeed);
@@ -168,6 +173,67 @@ void gameHandleInput(Game *game)
 	}	
 }
 
+//TODO clean this horrible thing up
+void checkAllCollisions(Game *game)
+{
+	int i;
+	// check bricks / walls collision //
+	for(i = 0; i < game->level->mapBatch->spritesLen; i++) {
+		Sprite *s = game->level->mapBatch->sprites[i];;
+	
+		Rect a = {game->player->pos.x, game->player->pos.y, USER_WIDTH, USER_HEIGHT};
+	
+		Rect b = {s->x, s->y, s->width, s->height};
+	
+		if(isColliding(&a, &b)) {
+			Vec2f distance = collisionCheck(&a, &b);	
+			if(abs((int)distance.x) > abs((int)distance.y)) {
+				if(distance.x < 0) { // left collision
+					game->player->pos.x = s->x + s->width+game->player->speed;
+				} else if (distance.x > 0) { // right collision
+					game->player->pos.x = s->x - USER_WIDTH - game->player->speed;
+				}
+			} 
+			else {
+				if(distance.y < 0) { // bottom collision
+					game->player->pos.y = s->y + s->height + game->player->speed;
+				} else if(distance.y > 0) {
+					game->player->pos.y = s->y - USER_HEIGHT - game->player->speed;
+				}
+			}
+		}
+
+		for(int j = 0; j < game->humansLen; j++) {
+			Rect a = {game->humans[j]->pos.x, game->humans[j]->pos.y, USER_WIDTH, USER_HEIGHT};
+
+			Rect b = {s->x, s->y, s->width, s->height};
+			
+		
+			if(isColliding(&a, &b)) {
+				Vec2f distance = collisionCheck(&a, &b);
+				if(abs((int)distance.x) > abs((int)distance.y)) {
+					if(distance.x < 0) { // left collision
+						game->humans[j]->pos.x = s->x + s->width + 1;
+					} else if (distance.x > 0) { // right collision
+						game->humans[j]->pos.x = s->x - USER_WIDTH - 1;
+					}
+				}
+				else {
+					if(distance.y < 0) { // bottom collision
+						game->humans[j]->pos.y = s->y + s->height + 1;
+					} else if(distance.y > 0) {
+						game->humans[j]->pos.y = s->y - USER_HEIGHT - 1;
+					}
+				}
+
+				game->humans[j]->direction = vec2fRotate(game->humans[j]->direction, rand()%45);
+				
+			}
+
+		}
+
+	}
+}
 
 
 void gameLoop(Game *game) 
@@ -198,6 +264,19 @@ void gameLoop(Game *game)
 
 		gameHandleInput(game);
 		cameraUpdate(game->cam);
+
+		// update human position //
+		for(int i = 0; i < game->humansLen; i++) {
+			if(numFrames % 30 == 0) {// change his direction once half a second
+				game->humans[i]->direction = vec2fRotate(game->humans[i]->direction, rand() %10);
+			}
+			Vec2f newPos = vec2fMulS(game->humans[i]->direction, game->humans[i]->speed);
+			newPos = vec2fAdd(game->humans[i]->pos, newPos);
+			userSetPos(game->humans[i], newPos);
+		}
+
+		checkAllCollisions(game);
+
 		windowClear();
 
 		glProgramUse(game->prog);
@@ -208,19 +287,17 @@ void gameLoop(Game *game)
 		glUniformMatrix4fv(pLocation, 1, GL_FALSE, 
 				&(game->cam->cameraMatrix.m[0][0]));
 
-		// build vertices based on new sprite type //
+		// build vertices for map //
 		sbBuildBatches(game->level->mapBatch);
 		sbDrawBatches(game->level->mapBatch);
 
+		// build vertices for users //
 		sbBuildBatches(game->usersBatch);
 		sbDrawBatches(game->usersBatch);	
 
-//		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		
-		//glBindVertexArray(0);
 
 		glProgramUnuse(game->prog);
-
+		
 		windowUpdate(game->win);
 
 

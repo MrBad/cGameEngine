@@ -1,6 +1,7 @@
 #include "sprite_batch.h"
 #include <string.h>
 #include <SDL2/SDL.h>
+#include <assert.h>
 #define SB_INIT_RB_LEN 16
 #define SB_INIT_SPRITES_LEN 16
 
@@ -137,6 +138,7 @@ static int getFreeRenderBatch(SpriteBatch *sb)
 	if(sb->rbLen == sb->rbSize) {
 		i = sb->rbSize == 0 ? 2 : sb->rbSize * 2;
 		sb->renderBatches = realloc(sb->renderBatches, i * sizeof(*sb->renderBatches));
+		assert(sb->renderBatches != NULL);
 		if(!sb->renderBatches) {
 			fprintf(stderr, "Cannot realloc sp->renderBatches\n");
 			return -1;
@@ -159,6 +161,8 @@ static int getFreeRenderBatch(SpriteBatch *sb)
 	return -1;
 }
 
+//TODO - use a self balancing tree, to avoid sorting
+//that's it, keep sprites preSorted
 static int sortByTexture(const void *a, const void *b) 
 {
 	if ((*(Sprite **)a)->textureID < (*(Sprite **)b)->textureID)
@@ -184,14 +188,12 @@ void sbBuildBatches(SpriteBatch *sb)
 	GLuint lastTextureId = 0;
 	int numBatch = 0, i, j;
 
+
 	lastTextureId = 0;
-	//
+	
 	sbSort(sb);
 
-	if(sb->spritesLen == 0) {
-		printf("sprites len is 0\n");
-		exit(1);
-	}
+
 	int needSize = sb->spritesLen * 6;
 	if(sb->verticesSize < needSize) {
 		sb->vertices = realloc(sb->vertices, needSize * sizeof(Vertex));
@@ -204,14 +206,24 @@ void sbBuildBatches(SpriteBatch *sb)
 	}
 
 	for(i = 0; i < sb->spritesLen; i++) {
+		if(!sb->sprites[i]->textureID) {
+			printf("invalid sprite at position: %d\n", i);
+			continue;
+		}
+		assert(sb->sprites);
+		assert(sb->sprites[i]);
+		assert(sb->sprites[i]->textureID);
+
 		if(sb->sprites[i]->textureID != lastTextureId) {
+			
 			lastTextureId = sb->sprites[i]->textureID;
 			numBatch = getFreeRenderBatch(sb);
-			//fprintf(stdout, "got numBatch: %d\n", numBatch);
 			sb->renderBatches[numBatch]->textureID = lastTextureId;
 			sb->renderBatches[numBatch]->offset = i * 6;
 			sb->renderBatches[numBatch]->numVertices = 0;	
 		}
+
+		assert(sb->renderBatches);
 
 		Sprite *sp = sb->sprites[i];
 		vertexSetPos(sb->vertices + i*6 + 0, sp->x + sp->width, sp->y + sp->height);
@@ -236,7 +248,8 @@ void sbBuildBatches(SpriteBatch *sb)
 					sp->color.b,
 					sp->color.a);
 		}
-
+		assert(sb->renderBatches);
+		assert(sb->renderBatches[numBatch]);
 		sb->renderBatches[numBatch]->numVertices += 6;
 	}
 	sb->verticesLen = i * 6;
