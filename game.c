@@ -23,6 +23,8 @@ Game *gameNew()
 	game->prog = NULL;
 	game->cam = NULL;
 	game->inmgr = NULL;
+	game->level = NULL;
+	game->usersBatch = NULL;
 	return game;
 }
 
@@ -62,19 +64,42 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 
 
 	// create a sprite batch
-	game->spriteBatch = sbNew(game->prog);
-
 	// init the sprite batch
-	sbInit(game->spriteBatch);
 
-	loadLevel(game, "resources/level1.txt");
-	
+	if(!(game->level = levelNew("resources/level1.txt"))) {
+		fprintf(stderr, "Cannot create level\n");
+		return false;
+	}
+	if(!(loadLevel(game->level, game->prog))) {
+		fprintf(stderr, "Cannot create level\n");
+		return false;
+	}	
+	// init map sprite batch //
+	sbInit(game->level->mapBatch);
+
 	game->camSpeed = 5.0f;
 	game->scaleSpeed = 1.02f;
 	
 
-	cameraSetPosition(game->cam, game->player->x, game->player->y);
+	cameraSetPosition(game->cam, game->level->playerPos.x, game->level->playerPos.x);
 	
+
+	// create new user batch //
+	game->usersBatch = sbNew(game->prog);
+	sbInit(game->usersBatch);
+
+	// init player //
+	Vec2f pos = game->level->playerPos;
+	float speed = 1.0f;
+	Sprite *sprite = spriteNew(
+			pos.x, pos.y, USER_WIDTH, USER_HEIGHT, 
+			game->level->textures[CIRCLE_TEX]->id);
+	game->player = userNew(pos, speed, sprite, PLAYER);
+
+	// add the sprite to users batches
+	sbAddSprite(game->usersBatch, game->player->sprite);
+	
+
 	return true;
 }
 
@@ -93,15 +118,12 @@ void gameDelete(Game *game)
 		game->cam = NULL;
 	}
 	for(int i = 0; i < 4; i++) {
-		if(game->level.textures[i]) {
-			free(game->level.textures[i]);
+		if(game->level->textures[i]) {
+			free(game->level->textures[i]);
 		}
 	}
-	for(int i = 0; i < game->spriteBatch->spritesLen; i++) {
-		if(game->spriteBatch->sprites[i])
-			spriteDelete(game->spriteBatch->sprites[i]);
-	}
-	sbDelete(game->spriteBatch);	
+	levelDelete(game->level);
+
 	windowDelete(game->win);
 	free(game);
 
@@ -115,7 +137,7 @@ void gameHandleInput(Game *game)
 	//float camSpeed = game->camSpeed;
 	float scaleSpeed = game->scaleSpeed;
 	float playerSpeed = 10;
-	Sprite *player = game->player;
+	Sprite *player = game->player->sprite;
 	if(inMgrIsKeyPressed(inmgr, IM_KEY_A)) {
 		spriteSetPos(player, player->x - playerSpeed, player->y);
 		cameraSetPosition(camera, player->x, player->y);
@@ -186,13 +208,12 @@ void gameLoop(Game *game)
 		glUniformMatrix4fv(pLocation, 1, GL_FALSE, 
 				&(game->cam->cameraMatrix.m[0][0]));
 
-		for(int i = 0; i < game->spriteBatch->spritesLen; i++) {
-		//	game->spriteBatch->sprites[i]->x += 1;
-		}		
 		// build vertices based on new sprite type //
-		sbBuildBatches(game->spriteBatch);
-		sbDrawBatches(game->spriteBatch);
-	
+		sbBuildBatches(game->level->mapBatch);
+		sbDrawBatches(game->level->mapBatch);
+
+		sbBuildBatches(game->usersBatch);
+		sbDrawBatches(game->usersBatch);	
 
 //		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		

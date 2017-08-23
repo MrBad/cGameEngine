@@ -8,8 +8,9 @@
 #include "mrb_lib/camera.h"
 #include "mrb_lib/inmgr.h"
 #include "mrb_lib/sprite_batch.h"
-
-
+#include "mrb_lib/vec2f.h"
+#include "level.h"
+#include "user.h"
 typedef enum {
 	GAME_PLAYING,
 	GAME_OVER,
@@ -20,20 +21,21 @@ typedef struct {
 	GLProgram *prog;
 	Camera *cam;
 	InMgr *inmgr;
-	Texture *earthTex;
-	Texture *circleTex;
-	SpriteBatch *spriteBatch;
+	
+	SpriteBatch *usersBatch;
 	GameStates state;
 
 	float camSpeed;
 	float scaleSpeed;
 	
-	struct {
-		int numHumans;
-		Texture *textures[32];
-	} level;
-
-	Sprite *player;
+	Level *level;
+	User *player;
+	User **zombies;
+	int zombiesSize;
+	int zombiesLen;
+	User **humans;
+	int humansSize;
+	int humansLen;
 } Game;
 
 

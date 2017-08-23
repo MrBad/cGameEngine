@@ -2,66 +2,136 @@
 #include "level.h"
 #include "mrb_lib/file_get.h"
 #include "mrb_lib/texture.h"
+#include "mrb_lib/sprite_batch.h"
+#include "strdup.h"
 
-enum {
-	CIRCLE_TEX,
-	GLASS_TEX,
-	LIGHT_BRICKS_TEX,
-	RED_BRICKS_TEX,
-	NUM_TEXTURES,
-};
-
-bool loadLevel(Game *game, char *path) 
+Level *levelNew(char *path) 
 {
-	unsigned char *buff;
-	int size, x, y, i;
+	Level *level = NULL;
+	if((level = malloc(sizeof(Level)))) {
+		level->path = strdup(path);
+		level->data = NULL;
+		level->numHumans = 0;
+		level->playerPos= (Vec2f) {0, 0};
+		level->zombiesPos= NULL;
+		level->zombiesLen = 0;
+		level->zombiesSize = 0;
+		level->textures = NULL;
+		level->textureLen = 0;
+		level->textureSize = 0;	
+		level->mapBatch = NULL;
+	}
+	return level;
+}
 
-	if(!(buff = file_get(path, &size))) {
+void levelDelete(Level *level) 
+{
+	int i;
+	if(level->path)
+		free(level->path);
+	if(level->data)
+		free(level->data);
+	if(level->zombiesPos)
+		free(level->zombiesPos);
+	if(level->textures) {
+		for(i = 0; i < NUM_TEXTURES; i++) {
+			if(level->textures[i])
+				free(level->textures[i]);
+		}
+		free(level->textures);
+	}
+	for(i = 0; i < level->mapBatch->spritesLen; i++) {
+		if(level->mapBatch->sprites[i])
+			spriteDelete(level->mapBatch->sprites[i]);
+	}
+	sbDelete(level->mapBatch);
+	free(level);
+}
+
+// TODO make an array generic class
+static int allocZombiePosition(Level *level)
+{
+	int numElements;
+	
+	// do we need to expand buffer ?
+	if(level->zombiesLen == level->zombiesSize) {
+		numElements = level->zombiesSize == 0 ? 2 : level->zombiesSize * 2;
+		if(!(level->zombiesPos = realloc(
+						level->zombiesPos, 
+						numElements * sizeof(* level->zombiesPos)))) {
+			fprintf(stderr, "Cannot realloc zombie buffer\n");
+			return -1;
+		}
+	}
+	int index = level->zombiesLen++;	
+	return index;
+}
+
+bool loadLevel(Level *level, GLProgram *prog)
+{
+	int size, x, y, i;
+	char str[512];
+
+
+	// get file
+	if(!(level->data = file_get(level->path, &size))) {
 		fprintf(stderr, "Cannot load level\n");
 		return false;
 	}	
-	char str[512]; 
-	sscanf((const char *)buff, "%s %d\n", str, &game->level.numHumans);
+	
 
 	// load textures //
-	Texture **textures = game->level.textures;
-	textures[CIRCLE_TEX] = loadTexture("resources/circle.png");
-	textures[GLASS_TEX] = loadTexture("resources/glass.png");
-	textures[LIGHT_BRICKS_TEX] = loadTexture("resources/light_bricks.png");
-	textures[RED_BRICKS_TEX] = loadTexture("resources/red_bricks.png");
+	level->textures = malloc(NUM_TEXTURES * sizeof(*level->textures));
+	if(!level->textures) {
+		fprintf(stderr, "Cannot alloc textures\n");
+		return false;
+	}
+	level->textures[CIRCLE_TEX] = loadTexture("resources/circle.png");
+	level->textures[GLASS_TEX] = loadTexture("resources/glass.png");
+	level->textures[LIGHT_BRICKS_TEX] = loadTexture("resources/light_bricks.png");
+	level->textures[RED_BRICKS_TEX] = loadTexture("resources/red_bricks.png");
 
 
-	for(i = 0; i < size && buff[i]!='\n'; i++);
+	// create map sprite batch //
+	if(!(level->mapBatch = sbNew(prog))) {
+		fprintf(stderr, "Cannot create sprite batch\n");
+		return false;
+	}
+
+	sscanf((const char *)level->data, "%s %d\n", str, &level->numHumans);
+
+	for(i = 0; i < size && level->data[i]!='\n'; i++);
 	x = 0; y = 0;
-	for(; buff[i]; i++, x+=64) {
+	int idx;
+	for(; level->data[i]; i++, x+=64) {
 		Texture *texture = NULL;
 		Sprite *sp = NULL;
 		Color color;
 		color.r = color.g = color.b = color.a = 255;
-		bool isPlayer = false, isZombie = false;	
-		switch(buff[i]) {
+		switch(level->data[i]) {
 			case 'R':
-				texture = textures[RED_BRICKS_TEX];
+				texture = level->textures[RED_BRICKS_TEX];
 				break;
 			case 'B':
-				texture = textures[RED_BRICKS_TEX];
+				texture = level->textures[RED_BRICKS_TEX];
 				break;
 			case 'G':
-				texture = textures[GLASS_TEX];
+				texture = level->textures[GLASS_TEX];
 				break;
 			case 'L': 
-				texture = textures[LIGHT_BRICKS_TEX];
+				texture = level->textures[LIGHT_BRICKS_TEX];
 				break;
-			case '@': 
-				texture = textures[CIRCLE_TEX];
-				color.r = color.g = 128; color.b = 255;
-				isPlayer = true;
-				break;
-			case 'Z':
-				texture = textures[CIRCLE_TEX];
-				color.r = 255; color.g = color.b = 64;	
-				isZombie = true;
-				break;
+			
+			case '@': // player - save position
+				level->playerPos.x = x;
+				level->playerPos.y = y;
+				continue;
+
+			case 'Z': // zombie - add it's position to zombies positions
+				idx = allocZombiePosition(level);
+				level->zombiesPos[idx].x = x;
+				level->zombiesPos[idx].y = y;
+				continue;
 			case '.': 
 				continue;
 			case '\r':
@@ -72,21 +142,13 @@ bool loadLevel(Game *game, char *path)
 				continue;
 
 			default:
-				fprintf(stderr, "Unknown identifier @ x:%d y:%d [%c]-[%i]\n", x, y, buff[i], buff[i]);
+				fprintf(stderr, "Unknown identifier @ x:%d y:%d [%c]-[%i]\n", x, y, level->data[i], level->data[i]);
 				continue;
 		}
 		sp = spriteNew(x, y, 64, 64, texture->id);
 		spriteSetColor(sp, &color);
-		sbAddSprite(game->spriteBatch, sp);
-		if(isPlayer) {
-			spriteSetDimensions(sp, 50, 50);
-			game->player = sp;
-			isPlayer = false;
-		} else if(isZombie) {
-			spriteSetDimensions(sp, 50, 50);
-		}
+		sbAddSprite(level->mapBatch, sp);
 	}
 
-	free(buff);
 	return true;	
 }
