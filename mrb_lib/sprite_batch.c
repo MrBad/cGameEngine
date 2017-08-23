@@ -125,7 +125,7 @@ bool sbDeleteSprite(SpriteBatch *sb, Sprite *sp)
 		}
 	}
 	if(!found) {
-		fprintf(stderr, "Cannot find sprite: %p\n", sp);
+		fprintf(stderr, "Cannot find sprite: %p\n", (void*) sp);
 	}
 	return found;
 }

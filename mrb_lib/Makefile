@@ -16,6 +16,10 @@ all: $(OBJECTS) Makefile *.c *.h
 
 test: test.o file_get.o
 	gcc test.o file_get.o -o test
+
+upng/upng.o: upng/upng.c upng/upng.h
+	$(CC) $(CFLAGS) -Wno-unused-but-set-variable $(OFLAGS) -o $@ $<
+
 %o: %.c Makefile
 	$(CC) $(CFLAGS) $(OFLAGS) -o $@ $<
 clean:
