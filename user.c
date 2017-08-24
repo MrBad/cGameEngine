@@ -15,6 +15,7 @@ User *userNew(Vec2f pos, float speed, Sprite *sprite, UserType type)
 	user->type = type;
 	user->direction = (Vec2f) {rand() % 100, rand() % 100};
 	user->direction = vec2fNormalize(user->direction);
+	user->velocity = vec2fMulS(user->direction, speed);
 	return user;
 }
 

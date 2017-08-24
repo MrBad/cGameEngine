@@ -210,33 +210,32 @@ void userBrickCollision(User *user, Sprite *brick)
 	userSetPos(user, newPos);
 }
 
-
 void userUserCollision(User *a, User *b, Game *game) 
 {
-	Vec2f minDistance, distance;
+	Vec2f distance;
 	Rect rectA = userGetRect(a);
 	Rect rectB = userGetRect(b);
 
 	if(a == b)
 		return;
-	distance = getDistance(&rectB, &rectA);
-	//printf("distance: %f, %f minDistance: %f, %f\n", distance.x, distance.y, minDistance.x, minDistance.y);
-	minDistance = (Vec2f){USER_WIDTH, USER_WIDTH};
 	
-	if(vec2fLength(distance) >= USER_WIDTH)
+	distance = vec2f(rectB.x - rectA.x, rectB.y - rectA.y);
+	
+	if(distance.x * distance.x + distance.y * distance.y >= USER_WIDTH * USER_WIDTH)
 		return;
 
 	Vec2f newPosA = userGetPos(a);
 	Vec2f newPosB = userGetPos(b);
 	Vec2f norm = vec2fNormalize(distance);
-	newPosA = vec2fAdd(newPosA, vec2fMulS(norm, 1));
-	newPosB = vec2fSub(newPosB, vec2fMulS(norm, 1));
+	newPosA = vec2fSub(newPosA, vec2fMulS(norm, 1));
+	newPosB = vec2fAdd(newPosB, vec2fMulS(norm, 1));
 	
 	if(a != game->player)
 		userSetPos(a, newPosA);
 	if(b!=game->player)
 		userSetPos(b, newPosB);
 }
+
 //TODO - use quad tree to check collision
 void checkAllCollisions(Game *game)
 {

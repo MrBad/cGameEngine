@@ -17,6 +17,7 @@ typedef struct {
 	Vec2f pos;
 	float speed;
 	Vec2f direction;
+	Vec2f velocity;
 	Sprite *sprite;
 	UserType type;
 } User;
