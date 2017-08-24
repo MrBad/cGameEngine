@@ -173,65 +173,69 @@ void gameHandleInput(Game *game)
 	}	
 }
 
-//TODO clean this horrible thing up
+void userBrickCollision(User *user, Sprite *brick) 
+{
+	Vec2f distance;
+	Vec2f newPos;
+	Rect a = userGetRect(user);
+	Rect b = {brick->x, brick->y, brick->width, brick->height};
+	distance = getDistance(&a, &b);
+	newPos.x = user->pos.x;
+	newPos.y = user->pos.y;
+	if(fabs(distance.x) > fabs(distance.y)) {
+		if(distance.x < 0) { // left collision
+			newPos.x = b.x + b.width;
+		} else if (distance.x > 0) { // right collision
+			newPos.x = b.x - USER_WIDTH;
+		}
+	}
+	else {
+		if(distance.y < 0) { // bottom collision
+			newPos.y = b.y + b.height;
+		} else if(distance.y > 0) {
+			newPos.y = b.y - USER_HEIGHT;
+		}
+	}
+	userSetPos(user, newPos);
+
+}
+
+//TODO - use quad tree to check collision
 void checkAllCollisions(Game *game)
 {
 	int i;
-	// check bricks / walls collision //
+	//Vec2f newPos, distance;
+	Sprite *s;
+	
+	// check bricks / walls collisions //
 	for(i = 0; i < game->level->mapBatch->spritesLen; i++) {
-		Sprite *s = game->level->mapBatch->sprites[i];;
-	
-		Rect a = {game->player->pos.x, game->player->pos.y, USER_WIDTH, USER_HEIGHT};
-	
-		Rect b = {s->x, s->y, s->width, s->height};
-	
-		if(isColliding(&a, &b)) {
-			Vec2f distance = collisionCheck(&a, &b);	
-			if(abs((int)distance.x) > abs((int)distance.y)) {
-				if(distance.x < 0) { // left collision
-					game->player->pos.x = s->x + s->width+game->player->speed;
-				} else if (distance.x > 0) { // right collision
-					game->player->pos.x = s->x - USER_WIDTH - game->player->speed;
-				}
-			} 
-			else {
-				if(distance.y < 0) { // bottom collision
-					game->player->pos.y = s->y + s->height + game->player->speed;
-				} else if(distance.y > 0) {
-					game->player->pos.y = s->y - USER_HEIGHT - game->player->speed;
-				}
-			}
-		}
 
-		for(int j = 0; j < game->humansLen; j++) {
-			Rect a = {game->humans[j]->pos.x, game->humans[j]->pos.y, USER_WIDTH, USER_HEIGHT};
-
-			Rect b = {s->x, s->y, s->width, s->height};
-			
+		s = game->level->mapBatch->sprites[i];;	
 		
-			if(isColliding(&a, &b)) {
-				Vec2f distance = collisionCheck(&a, &b);
-				if(abs((int)distance.x) > abs((int)distance.y)) {
-					if(distance.x < 0) { // left collision
-						game->humans[j]->pos.x = s->x + s->width + 1;
-					} else if (distance.x > 0) { // right collision
-						game->humans[j]->pos.x = s->x - USER_WIDTH - 1;
-					}
-				}
-				else {
-					if(distance.y < 0) { // bottom collision
-						game->humans[j]->pos.y = s->y + s->height + 1;
-					} else if(distance.y > 0) {
-						game->humans[j]->pos.y = s->y - USER_HEIGHT - 1;
-					}
-				}
-
-				game->humans[j]->direction = vec2fRotate(game->humans[j]->direction, rand()%45);
-				
-			}
-
+		Rect a = userGetRect(game->player);
+		Rect b = {s->x, s->y, s->width, s->height};	
+		if(isColliding(&a, &b)) {
+			userBrickCollision(game->player, s);
 		}
-
+		
+		for(int j = 0; j < game->humansLen; j++) {
+			Rect a = userGetRect(game->humans[j]);
+			if(isColliding(&a, &b)) {
+				userBrickCollision(game->humans[j], s);
+				game->humans[j]->direction = vec2fRotate(
+						game->humans[j]->direction, 
+						rand()%45);
+			}
+		}
+		for(int j = 0; j < game->zombiesLen; j++) {
+			Rect a = userGetRect(game->zombies[j]);
+			if(isColliding(&a, &b)) {
+				userBrickCollision(game->zombies[j], s);
+				game->zombies[j]->direction = vec2fRotate(
+						game->zombies[j]->direction, 
+						rand()%30);
+			}
+		}
 	}
 }
 
@@ -263,7 +267,6 @@ void gameLoop(Game *game)
 		}
 
 		gameHandleInput(game);
-		cameraUpdate(game->cam);
 
 		// update human position //
 		for(int i = 0; i < game->humansLen; i++) {
@@ -274,8 +277,18 @@ void gameLoop(Game *game)
 			newPos = vec2fAdd(game->humans[i]->pos, newPos);
 			userSetPos(game->humans[i], newPos);
 		}
+		// update zombies position //
 
+		for(int i = 0; i < game->zombiesLen; i++) {
+			if(numFrames % 20 == 0) {// change his direction once half a second
+				game->zombies[i]->direction = vec2fRotate(game->zombies[i]->direction, rand() %10);
+			}
+			Vec2f newPos = vec2fMulS(game->zombies[i]->direction, game->zombies[i]->speed);
+			newPos = vec2fAdd(game->zombies[i]->pos, newPos);
+			userSetPos(game->zombies[i], newPos);
+		}
 		checkAllCollisions(game);
+		cameraUpdate(game->cam);
 
 		windowClear();
 

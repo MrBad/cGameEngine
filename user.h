@@ -25,5 +25,5 @@ User *userNew(Vec2f pos, float speed, Sprite *sprite, UserType type);
 void userSetPos(User *user, Vec2f pos);
 void userDelete(User *user);
 
-
+Rect userGetRect(User *user);
 #endif

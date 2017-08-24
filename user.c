@@ -132,3 +132,10 @@ void initPlayer(Game *game)
 	// add the sprite to users batches
 	sbAddSprite(game->usersBatch, game->player->sprite);
 }
+
+Rect userGetRect(User *user)
+{
+	return (Rect) {
+		user->pos.x, user->pos.y, 
+		user->sprite->width, user->sprite->height};
+}
