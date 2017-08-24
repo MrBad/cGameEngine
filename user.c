@@ -25,7 +25,7 @@ void userSetPos(User *user, Vec2f pos)
 	user->sprite->y = pos.y;
 	user->pos = pos;
 }
-Vec2f userGetPos(User *user) {
+inline Vec2f userGetPos(User *user) {
 	return (Vec2f) {user->pos.x, user->pos.y};
 }
 
@@ -125,7 +125,7 @@ void initPlayer(Game *game)
 	Color color;
 
 	pos = game->level->playerPos;
-	speed = 4.0f;
+	speed = 5.0f;
 	sprite = spriteNew(
 			pos.x, pos.y, USER_WIDTH, USER_HEIGHT,
 			game->level->textures[CIRCLE_TEX]->id);
@@ -136,7 +136,7 @@ void initPlayer(Game *game)
 	sbAddSprite(game->usersBatch, game->player->sprite);
 }
 
-Rect userGetRect(User *user)
+inline Rect userGetRect(User *user)
 {
 	return (Rect) {
 		user->pos.x, user->pos.y, 

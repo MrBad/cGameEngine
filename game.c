@@ -210,30 +210,27 @@ void userBrickCollision(User *user, Sprite *brick)
 	userSetPos(user, newPos);
 }
 
-void userUserCollision(User *a, User *b, Game *game) 
+
+void userUserCollision(User *a, User *b, Game *game)
 {
-	Vec2f distance;
-	Rect rectA = userGetRect(a);
-	Rect rectB = userGetRect(b);
-
-	if(a == b)
-		return;
+	Vec2f distVec = vec2fSub(a->pos, b->pos);
+	if(distVec.x * distVec.x + distVec.y * distVec.y < USER_WIDTH * USER_WIDTH) {
+		float minDistance = USER_WIDTH;
+		float distance = vec2fLength(distVec);
+		float depth = minDistance - distance;
 	
-	distance = vec2f(rectB.x - rectA.x, rectB.y - rectA.y);
-	
-	if(distance.x * distance.x + distance.y * distance.y >= USER_WIDTH * USER_WIDTH)
-		return;
-
-	Vec2f newPosA = userGetPos(a);
-	Vec2f newPosB = userGetPos(b);
-	Vec2f norm = vec2fNormalize(distance);
-	newPosA = vec2fSub(newPosA, vec2fMulS(norm, 1));
-	newPosB = vec2fAdd(newPosB, vec2fMulS(norm, 1));
-	
-	if(a != game->player)
-		userSetPos(a, newPosA);
-	if(b!=game->player)
-		userSetPos(b, newPosB);
+		Vec2f colDeptVec = vec2fMulS(vec2fNormalize(distVec), depth);
+		// if a or b is the player, don't push - instead move twice	the other player
+		if(a->type == PLAYER) {
+			userSetPos(b, vec2fSub(userGetPos(b), colDeptVec));
+		} else if(b->type == PLAYER) {
+			userSetPos(a, vec2fSub(userGetPos(a), colDeptVec));
+		} else {
+			colDeptVec = vec2fDivS(colDeptVec, 2.0f);
+			userSetPos(a, vec2fAdd(userGetPos(a), colDeptVec));
+			userSetPos(b, vec2fSub(userGetPos(b), colDeptVec));
+		}
+	}
 }
 
 //TODO - use quad tree to check collision
