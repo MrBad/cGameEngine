@@ -36,6 +36,7 @@ typedef struct {
 	User **humans;
 	int humansSize;
 	int humansLen;
+	User **users;	// ptr to a list of all users, used in collide
 } Game;
 
 

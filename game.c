@@ -87,7 +87,16 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 	initHumans(game);
 	initZombies(game);
 	initPlayer(game);
-	
+
+	// populate game->users; //
+	int i = 0, j = 0;
+	game->users = malloc((game->humansLen+game->zombiesLen+1) * sizeof(* game->users));
+	game->users[j++] = game->player;
+	for(i = 0; i < game->humansLen; i++, j++)
+		game->users[j] = game->humans[i];
+	for(i = 0; i < game->zombiesLen; i++, j++)
+		game->users[j] = game->zombies[i];
+
 	cameraSetPosition(game->cam, game->player->pos.x, game->player->pos.y);
 	return true;
 }
@@ -124,7 +133,9 @@ void gameDelete(Game *game)
 	free(game->humans);
 
 	userDelete(game->player);
-
+	
+	if(game->users)
+		free(game->users);
 	sbDelete(game->usersBatch);
 	levelDelete(game->level);
 
@@ -197,13 +208,39 @@ void userBrickCollision(User *user, Sprite *brick)
 		}
 	}
 	userSetPos(user, newPos);
-
 }
 
+
+void userUserCollision(User *a, User *b, Game *game) 
+{
+	Vec2f minDistance, distance;
+	Rect rectA = userGetRect(a);
+	Rect rectB = userGetRect(b);
+
+	if(a == b)
+		return;
+	distance = getDistance(&rectB, &rectA);
+	//printf("distance: %f, %f minDistance: %f, %f\n", distance.x, distance.y, minDistance.x, minDistance.y);
+	minDistance = (Vec2f){USER_WIDTH, USER_WIDTH};
+	
+	if(vec2fLength(distance) >= USER_WIDTH)
+		return;
+
+	Vec2f newPosA = userGetPos(a);
+	Vec2f newPosB = userGetPos(b);
+	Vec2f norm = vec2fNormalize(distance);
+	newPosA = vec2fAdd(newPosA, vec2fMulS(norm, 1));
+	newPosB = vec2fSub(newPosB, vec2fMulS(norm, 1));
+	
+	if(a != game->player)
+		userSetPos(a, newPosA);
+	if(b!=game->player)
+		userSetPos(b, newPosB);
+}
 //TODO - use quad tree to check collision
 void checkAllCollisions(Game *game)
 {
-	int i;
+	int i, j;
 	//Vec2f newPos, distance;
 	Sprite *s;
 	
@@ -237,6 +274,15 @@ void checkAllCollisions(Game *game)
 			}
 		}
 	}
+
+	int len = game->zombiesLen+game->humansLen+1;
+	for(i = 0; i < len; i++) {
+		User *a = game->users[i];
+		for(j = i; j < len; j++) {
+			User *b = game->users[j];
+			userUserCollision(a, b, game);
+		}
+	}
 }
 
 
@@ -267,7 +313,6 @@ void gameLoop(Game *game)
 		}
 
 		gameHandleInput(game);
-
 		// update human position //
 		for(int i = 0; i < game->humansLen; i++) {
 			if(numFrames % 30 == 0) {// change his direction once half a second
@@ -277,8 +322,7 @@ void gameLoop(Game *game)
 			newPos = vec2fAdd(game->humans[i]->pos, newPos);
 			userSetPos(game->humans[i], newPos);
 		}
-		// update zombies position //
-
+		// update zombies position - TODO find nearest human and hunt him//
 		for(int i = 0; i < game->zombiesLen; i++) {
 			if(numFrames % 20 == 0) {// change his direction once half a second
 				game->zombies[i]->direction = vec2fRotate(game->zombies[i]->direction, rand() %10);

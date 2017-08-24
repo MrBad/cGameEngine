@@ -24,7 +24,9 @@ void userSetPos(User *user, Vec2f pos)
 	user->sprite->y = pos.y;
 	user->pos = pos;
 }
-
+Vec2f userGetPos(User *user) {
+	return (Vec2f) {user->pos.x, user->pos.y};
+}
 
 void userDelete(User *user) 
 {
@@ -83,7 +85,7 @@ void initZombies(Game *game)
 		sprite = spriteNew(
 				pos.x, pos.y, USER_WIDTH, USER_HEIGHT,
 				game->level->textures[CIRCLE_TEX]->id);
-		color = (Color){255, 128, 128, 255};
+		color = (Color){255, 0, 0, 255};
 		spriteSetColor(sprite, &color);
 		game->zombies[idx] = userNew(pos, speed, sprite, ZOMBIE);
 		sbAddSprite(game->usersBatch, sprite);
@@ -106,7 +108,7 @@ void initHumans(Game *game)
 		sprite = spriteNew(
 				pos.x, pos.y, USER_WIDTH, USER_HEIGHT,
 				game->level->textures[CIRCLE_TEX]->id);
-		color = (Color){128, 255, 128, 255};
+		color = (Color){rand()%128, rand()%255, rand()%128, 255};
 		spriteSetColor(sprite, &color);
 		game->humans[idx] = userNew(pos, speed, sprite, HUMAN);
 		// add the sprite to users batches
@@ -122,7 +124,7 @@ void initPlayer(Game *game)
 	Color color;
 
 	pos = game->level->playerPos;
-	speed = 15.0f;
+	speed = 4.0f;
 	sprite = spriteNew(
 			pos.x, pos.y, USER_WIDTH, USER_HEIGHT,
 			game->level->textures[CIRCLE_TEX]->id);

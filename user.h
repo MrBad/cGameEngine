@@ -23,6 +23,7 @@ typedef struct {
 
 User *userNew(Vec2f pos, float speed, Sprite *sprite, UserType type);
 void userSetPos(User *user, Vec2f pos);
+Vec2f userGetPos(User *user);
 void userDelete(User *user);
 
 Rect userGetRect(User *user);
