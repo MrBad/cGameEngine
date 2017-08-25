@@ -3,7 +3,7 @@
 #include "mrb_lib/vec2f.h"
 
 // bounding check fast collision check
-bool isColliding(Rect *a, Rect *b) 
+inline bool isColliding(Rect *a, Rect *b) 
 {
 	return (!(
 				(a->x >= b->x + b->width) || 

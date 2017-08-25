@@ -1,3 +1,4 @@
+
 #include "user.h"
 #include "game.h"
 
@@ -13,8 +14,10 @@ User *userNew(Vec2f pos, float speed, Sprite *sprite, UserType type)
 	user->speed = speed;
 	user->sprite = sprite;
 	user->type = type;
-	user->direction = (Vec2f) {rand() % 100, rand() % 100};
+	user->direction = vec2f(rand() % 100, rand() % 100);
 	user->direction = vec2fNormalize(user->direction);
+	if(user->direction.x == 0 && user->direction.y == 0)
+		user->direction = vec2f(10, 120);
 	user->velocity = vec2fMulS(user->direction, speed);
 	return user;
 }
@@ -31,64 +34,28 @@ inline Vec2f userGetPos(User *user) {
 
 void userDelete(User *user) 
 {
-	free(user);
+	if (user) free(user);
 }
 
-
-static int allocZombie(Game *game) 
-{
-	int numElements;
-	if(game->zombiesLen == game->zombiesSize) {
-		numElements = game->zombiesSize == 0 ? 2 : game->zombiesSize * 2;
-		if(!(game->zombies = realloc(
-						game->zombies, 
-						numElements * sizeof(*game->zombies)))) 
-		{
-			fprintf(stderr, "Cannot realloc zombies list\n");
-			return -1;
-		}
-		game->zombiesSize = numElements;
-	}
-	int index = game->zombiesLen++;
-	return index;
-}
-
-static int allocHuman(Game *game)
-{
-    int numElements;
-    if(game->humansLen == game->humansSize) {
-        numElements = game->humansSize == 0 ? 2 : game->humansSize * 2;
-        if(!(game->humans = realloc(
-                        game->humans,
-                        numElements * sizeof(*game->humans))))
-        {
-            fprintf(stderr, "Cannot realloc humans list\n");
-            return -1;
-        }
-        game->humansSize = numElements;
-    }
-    int index = game->humansLen++;
-    return index;
-}
- 
 	
 void initZombies(Game *game) 
 {
-	int i, idx;
+	int i;
 	Vec2f pos;
 	float speed;
-	Sprite *sprite;		
-	Color color;
-	for(i = 0; i < game->level->zombiesLen; i++) {
-		idx = allocZombie(game);
-		pos = game->level->zombiesPos[idx];
+	Sprite *sprite; 
+	Color c;
+	game->zombies = arrayNew();
+	
+	for(i = 0; i < game->level->zombiesLen; i++) {	
+		pos = game->level->zombiesPos[i];
 		speed = 1.5f;
 		sprite = spriteNew(
 				pos.x, pos.y, USER_WIDTH, USER_HEIGHT,
 				game->level->textures[CIRCLE_TEX]->id);
-		color = (Color){255, 0, 0, 255};
-		spriteSetColor(sprite, &color);
-		game->zombies[idx] = userNew(pos, speed, sprite, ZOMBIE);
+		c = color(255, 0, 0, 255);
+		spriteSetColor(sprite, &c);
+		arrayAdd(game->zombies, userNew(pos, speed, sprite, ZOMBIE));
 		sbAddSprite(game->usersBatch, sprite);
 	}
 
@@ -96,22 +63,26 @@ void initZombies(Game *game)
 
 void initHumans(Game *game)
 {
-	int i, idx;
+	int i;
 	Vec2f pos;
 	float speed;
 	Sprite *sprite;
-	Color color;
+	Color c;
+	game->humans = arrayNew();
+
 	for(i = 0; i < game->level->numHumans; i++) {
 		// init humans //
-		idx = allocHuman(game);
-		pos = (Vec2f) {128 + rand() % (game->level->maxWidth - 256), 128 + rand() % (game->level->maxHeight - 256)};
+		pos = vec2f(
+				128 + rand() % (game->level->maxWidth - 256), 
+				128 + rand() % (game->level->maxHeight - 256));
+
 		speed = 1.0f;
 		sprite = spriteNew(
 				pos.x, pos.y, USER_WIDTH, USER_HEIGHT,
 				game->level->textures[CIRCLE_TEX]->id);
-		color = (Color){rand()%128, rand()%255, rand()%128, 255};
-		spriteSetColor(sprite, &color);
-		game->humans[idx] = userNew(pos, speed, sprite, HUMAN);
+		c = color(rand() % 128, rand() % 255, rand() % 128, 255);
+		spriteSetColor(sprite, &c);
+		arrayAdd(game->humans, userNew(pos, speed, sprite, HUMAN));
 		// add the sprite to users batches
 		sbAddSprite(game->usersBatch, sprite);
 	}
@@ -125,7 +96,7 @@ void initPlayer(Game *game)
 	Color color;
 
 	pos = game->level->playerPos;
-	speed = 5.0f;
+	speed = 10.0f;
 	sprite = spriteNew(
 			pos.x, pos.y, USER_WIDTH, USER_HEIGHT,
 			game->level->textures[CIRCLE_TEX]->id);

@@ -61,7 +61,6 @@ void sbInit(SpriteBatch *sb)
 }
 
 void sbDelete(SpriteBatch *sb) {
-
 	if(sb->renderBatches)
 		free(sb->renderBatches);
 	if(sb->vertices) 

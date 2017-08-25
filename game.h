@@ -6,6 +6,7 @@
 #include "mrb_lib/camera.h"
 #include "mrb_lib/inmgr.h"
 #include "mrb_lib/sprite_batch.h"
+#include "mrb_lib/array.h"
 #include "user.h"
 #include "level.h"
 
@@ -30,13 +31,9 @@ typedef struct {
 
 	Level *level;
 	User *player;
-	User **zombies;
-	int zombiesSize;
-	int zombiesLen;
-	User **humans;
-	int humansSize;
-	int humansLen;
-	User **users;	// ptr to a list of all users, used in collide
+	Array *zombies;
+	Array *humans;
+	Array *users;	// ptr to a list of all users, used in collide
 } Game;
 
 
@@ -50,6 +47,6 @@ void gameDelete(Game *game);
 extern void initZombies(Game *game);
 extern void initHumans(Game *game);
 extern void initPlayer(Game *game);
-
-
+//extern int allocZombie(Game *game);
+//extern int allocHuman(Game *game);
 #endif
