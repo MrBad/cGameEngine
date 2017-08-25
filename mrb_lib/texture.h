@@ -9,5 +9,7 @@ typedef struct {
 } Texture;
 
 Texture *loadTexture(const char *filePath);
+void textureDelete(Texture *texture);
 
-#endif
+#endif // TEXTURE_H
+

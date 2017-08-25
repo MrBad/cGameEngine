@@ -50,6 +50,7 @@ void levelDelete(Level *level)
 	free(level);
 }
 
+
 // TODO make an array generic class
 static int allocZombiePosition(Level *level)
 {

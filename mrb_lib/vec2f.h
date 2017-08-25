@@ -23,7 +23,10 @@ static inline float vec2fLength(Vec2f vec)
 {
 	return sqrt(vec.x * vec.x + vec.y * vec.y);
 }
-
+static inline float vec2fSquaredLength(Vec2f vec) 
+{
+	return vec.x * vec.x + vec.y * vec.y;
+}
 static inline float vec2fDot(Vec2f a, Vec2f b) 
 {
 	return a.x * b.x + a.y * b.y;

@@ -7,7 +7,7 @@ CFLAGS=-g -Wall -Wextra -std=c99 -pedantic $(INCLUDE) $(DFLAGS)
 MAKE=make
 
 TARGET=mrb_lib.a
-OBJECTS=camera.o error.o file_get.o gl_program.o inmgr.o mat4f.o \
+OBJECTS=camera.o file_get.o gl_program.o inmgr.o mat4f.o \
 		sprite.o sprite_batch.o texture.o vertex.o window.o \
 		array.o \
 		upng/upng.o

@@ -1,22 +1,24 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 #include "error.h"
 #include "file_get.h"
 #include "gl_program.h"
 
 
-static void compileShader(const char *fullPath, GLuint shaderID) 
+static bool compileShader(const char *fullPath, GLuint shaderID) 
 {
 	unsigned char *buff = NULL;
 	int size;
 	buff = file_get(fullPath, &size);
 	if(size < 0) {
-		fatalError("Cannot open: %s\n", fullPath);
+		fprintf(stderr, "Cannot open: %s\n", fullPath);
+		return false;
 	}
 
-	//glShaderSource(shaderID, 1, (const GLchar**)&content, NULL);
 	glShaderSource(shaderID, 1, (const GLchar**)&buff, NULL);
 	glCompileShader(shaderID);
 	
@@ -31,33 +33,53 @@ static void compileShader(const char *fullPath, GLuint shaderID)
 		glDeleteShader(shaderID);
 		fprintf(stderr, "Cannot create shader %s: %s\n", fullPath, errorLog);
 		free(errorLog);
-		exit(1);
+		free(buff);
+		return false;
 	}
 
-	//free(content);
-	//fclose(fp);
 	free(buff);
+	return true;
 }
 
 GLProgram* glProgramNew() 
 {
 	GLProgram* program;
 	if(!(program = calloc(1, sizeof(GLProgram)))) {
-		fatalError("Out of memory: GLSLProgram\n");
+		fprintf(stderr, "Out of memory: GLProgram\n");
+		return NULL;
 	}
 	
 	program->programID = glCreateProgram();
 	program->vertexShaderID = glCreateShader(GL_VERTEX_SHADER);
-	if(!program->vertexShaderID)
-		fatalError("Cannot create vertexShaderID\n");
+
+	if(!program->vertexShaderID) {
+		fprintf(stderr, "Cannot create vertexShaderID\n");
+		return NULL;
+	}
 	program->fragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
-	if(!program->fragmentShaderID)
-		fatalError("Cannot create fragmentShaderID\n");
-	
+	if(!program->fragmentShaderID) {
+		fprintf(stderr, "Cannot create fragmentShaderID\n");
+		return NULL;
+	}
 	return program;
 }	
 
-void glProgramCompileShaders(GLProgram *program, const char *path) {
+void glProgramDelete(GLProgram *program)
+{
+	if(!program) {
+		fprintf(stderr, "Trying to free a null GLSLProgram\n");
+		return;
+	}
+	glDeleteShader(program->vertexShaderID);
+	glDeleteShader(program->fragmentShaderID);
+	glDeleteProgram(program->programID);
+
+	free(program);
+	program = NULL;
+}
+
+void glProgramCompileShaders(GLProgram *program, const char *path) 
+{
 	char *fullPath = calloc(1, strlen(path) + 4);
 	strcat(fullPath, path);
 	strcat(fullPath, ".vs");
@@ -112,15 +134,6 @@ void glProgramUnuse(GLProgram *program)
 		glEnableVertexAttribArray(0);
 }
 
-void glProgramDelete(GLProgram *program)
-{
-	if(!program) {
-		fatalError("Trying to free a null GLSLProgram\n");
-	}
-
-	free(program);
-	program = NULL;
-}
 
 void glProgramAddAttribute(GLProgram *program, const char *attributeName) 
 {

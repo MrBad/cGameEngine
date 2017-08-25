@@ -14,6 +14,7 @@ User *userNew(Vec2f pos, float speed, Sprite *sprite, UserType type)
 	user->speed = speed;
 	user->sprite = sprite;
 	user->type = type;
+	
 	user->direction = vec2f(rand() % 100, rand() % 100);
 	user->direction = vec2fNormalize(user->direction);
 	if(user->direction.x == 0 && user->direction.y == 0)
@@ -130,14 +131,38 @@ void humansUpdate(Game *game)
 	}
 }
 
+User *getNearUser(Game *game, User *user) 
+{
+	Vec2f distVec;
+	float minDistance = 0xFFFFFF, sqLen;
+	User *closestUser = user;
+	for(int i = 0; i < arrayLen(game->users); i++) {
+		User *other = arrayGet(game->users, i);
+		if(other->type != HUMAN)
+			continue;
+		distVec = vec2fSub(other->pos, user->pos);
+		sqLen = vec2fSquaredLength(distVec);
+		if(sqLen < minDistance) {
+			closestUser = other;
+			minDistance = sqLen;
+		}
+	}
+	return closestUser;
+}
+
 void zombiesUpdate(Game *game)
 {
 	// update zombies position - TODO find nearest human and hunt him//
 	for(int i = 0; i < arrayLen(game->zombies); i++) {
 		User *zombie = arrayGet(game->zombies, i);
+		User *nearHuman = getNearUser(game, zombie);
+		Vec2f newDir = vec2fSub(nearHuman->pos, zombie->pos);
+		zombie->direction = vec2fNormalize(newDir);
+#if 0
 		if(game->totalFrames % 20 == 0) {// change his direction once half a second
 			zombie->direction = vec2fRotate(zombie->direction, rand() %10);
 		}
+#endif		
 		Vec2f newPos = vec2fMulS(zombie->direction, zombie->speed);
 		newPos = vec2fAdd(zombie->pos, newPos);
 		userSetPos(zombie, newPos);

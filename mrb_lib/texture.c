@@ -46,3 +46,8 @@ Texture *loadTexture(const char *filePath)
 	return texture;	
 }
 
+void textureDelete(Texture *texture) 
+{
+	glDeleteTextures(1, &texture->id);
+	free(texture);
+}

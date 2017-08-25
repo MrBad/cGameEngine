@@ -62,10 +62,6 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 	}
 	gameInitShaders(game);
 
-
-	// create a sprite batch
-	// init the sprite batch
-
 	if(!(game->level = levelNew("resources/level1.txt"))) {
 		fprintf(stderr, "Cannot create level\n");
 		return false;

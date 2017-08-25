@@ -8,30 +8,39 @@ Window *windowNew(const char *title, int width, int height, int flags)
 {
 	flags = 0;
 	Window *window = calloc(1, sizeof(*window));
-	if(!window)
-		fatalError("Cannot alocate memory for window\n");
-
+	if(!window) {
+		fprintf(stderr, "Cannot alocate memory for window\n");
+		return NULL;
+	}
 	window->width = width;
 	window->height = height;
 	
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	
-	if(SDL_Init(SDL_INIT_EVERYTHING) < 0) 
-		fatalError("SDL_Init: %s\n", SDL_GetError());
-	
+	if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
+		fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
+		windowDelete(window);
+		return NULL;
+	}
 	window->sdlWindow = SDL_CreateWindow(
 			title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 			width, height, SDL_WINDOW_OPENGL | flags);
 	
 	if(window->sdlWindow == NULL) {
-		fatalError("Cannot create window: %s\n", SDL_GetError());
+		fprintf(stderr, "Cannot create window: %s\n", SDL_GetError());
+		windowDelete(window);
+		return NULL;
 	}
 	window->glContext = SDL_GL_CreateContext(window->sdlWindow);
 	if(window->glContext == NULL) {
-		fatalError("Cannot create OpenGL context: %s\n", SDL_GetError());
+		fprintf(stderr, "Cannot create OpenGL context: %s\n", SDL_GetError());
+		windowDelete(window);
+		return NULL;
 	}
 	if(glewInit() != GLEW_OK) {
-		fatalError("Cannot init glew\n");
+		fprintf(stderr, "Cannot init glew\n");
+		windowDelete(window);
+		return NULL;
 	}
 	printf("--- OpenGL Version: %s ---\n", glGetString(GL_VERSION));
 	windowSetClearColor(0, 0, 0.3, 1);
@@ -43,7 +52,6 @@ Window *windowNew(const char *title, int width, int height, int flags)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	return window;
-	
 
 }
 void windowSetClearColor(float r, float g, float b, float a) 
@@ -55,31 +63,15 @@ void windowClear() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-#if 0
-bool windowHandleEvents(Window *window) 
-{
-	SDL_Event event = window->event;
-	while(SDL_PollEvent(&event)) {
-		if(event.type == SDL_QUIT) {
-			return true;
-		} else if(event.type == SDL_KEYDOWN) {
-			if(event.key.keysym.sym == SDLK_ESCAPE) {
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-#endif
 void windowUpdate(Window *window) 
 {
 	SDL_GL_SwapWindow(window->sdlWindow);
 }
-void windowDelete(Window *window) 
+void windowDelete(Window *window)
 {
 	if(!window) {
-		fatalError("Cannot destroy empty window\n");
+		fprintf(stderr, "Cannot destroy empty window\n");
+		return;
 	}	
 
 	SDL_GL_DeleteContext(window->glContext);
