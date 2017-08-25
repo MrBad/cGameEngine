@@ -113,3 +113,33 @@ inline Rect userGetRect(User *user)
 		user->pos.x, user->pos.y, 
 		user->sprite->width, user->sprite->height};
 }
+
+
+
+void humansUpdate(Game *game) 
+{
+	// update human position //
+	for(int i = 0; i < arrayLen(game->humans); i++) {
+		User *human = arrayGet(game->humans, i);
+		if(game->totalFrames % 30 == 0) {// change his direction once half a second
+			human->direction = vec2fRotate(human->direction, rand() %10);
+		}
+		Vec2f newPos = vec2fMulS(human->direction, human->speed);
+		newPos = vec2fAdd(human->pos, newPos);
+		userSetPos(human, newPos);
+	}
+}
+
+void zombiesUpdate(Game *game)
+{
+	// update zombies position - TODO find nearest human and hunt him//
+	for(int i = 0; i < arrayLen(game->zombies); i++) {
+		User *zombie = arrayGet(game->zombies, i);
+		if(game->totalFrames % 20 == 0) {// change his direction once half a second
+			zombie->direction = vec2fRotate(zombie->direction, rand() %10);
+		}
+		Vec2f newPos = vec2fMulS(zombie->direction, zombie->speed);
+		newPos = vec2fAdd(zombie->pos, newPos);
+		userSetPos(zombie, newPos);
+	}
+}

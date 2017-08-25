@@ -34,6 +34,7 @@ typedef struct {
 	Array *zombies;
 	Array *humans;
 	Array *users;	// ptr to a list of all users, used in collide
+	unsigned long totalFrames;
 } Game;
 
 
@@ -47,6 +48,9 @@ void gameDelete(Game *game);
 extern void initZombies(Game *game);
 extern void initHumans(Game *game);
 extern void initPlayer(Game *game);
-//extern int allocZombie(Game *game);
-//extern int allocHuman(Game *game);
+extern void humansUpdate(Game *game);
+extern void zombiesUpdate(Game *game);
+// defined in collision.c
+extern void checkAllCollisions(Game *game);
+
 #endif

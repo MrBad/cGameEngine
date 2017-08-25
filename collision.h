@@ -17,5 +17,4 @@ typedef enum {
 bool isColliding(Rect *a, Rect *b);
 Vec2f collisionCheck(Rect *a, Rect *b);
 Vec2f getDistance(Rect *a, Rect *b);
-
 #endif
