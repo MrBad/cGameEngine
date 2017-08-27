@@ -46,7 +46,7 @@ Window *windowNew(const char *title, int width, int height, int flags)
 	windowSetClearColor(0, 0, 0.3, 1);
 
 	// 1 for vsync
-	SDL_GL_SetSwapInterval(0);
+	SDL_GL_SetSwapInterval(1);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

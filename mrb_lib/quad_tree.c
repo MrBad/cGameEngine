@@ -5,9 +5,20 @@
 #include <string.h>
 #include <assert.h>
 
-#define QT_TREE_MAX_OBJECTS 2
-// Quad Tree Objects //
 
+// Maximum number of objects in a node 
+// before splitting node //
+#define QT_TREE_MAX_OBJECTS 2
+
+static void quadTreeObjDelete(QuadTreeObj *obj) 
+{
+	free(obj);
+}
+
+void QuadTreeObjDel(void *obj) 
+{
+	quadTreeObjDelete(obj);
+}
 
 QuadTreeObj *quadTreeObjNew(AABB limits, void *data) 
 {
@@ -21,15 +32,22 @@ QuadTreeObj *quadTreeObjNew(AABB limits, void *data)
 	return obj;
 }
 
-void quadTreeObjDelete(QuadTreeObj *obj) 
+static void printNode(QuadTree *node) 
 {
-	free(obj);
+	printf("node: {%8.2f, %8.2f, %8.2f, %8.2f}\n", 
+			node->box.minX, node->box.minY, 
+			node->box.maxX, node->box.maxY);
 }
 
-void QuadTreeObjDel(void *obj) {
-	quadTreeObjDelete(obj);
+static void printObj (QuadTreeObj *obj) 
+{
+	printf("obj:  {%8.2f, %8.2f, %8.2f, %8.2f}, %s\n", 
+			obj->limits.minX, obj->limits.minY, 
+			obj->limits.maxX, obj->limits.maxY, 
+			(char *)obj->data);
 }
 
+// creates a QuadTree
 QuadTree *quadTreeNew(AABB box) 
 {
 	int i;
@@ -47,6 +65,7 @@ QuadTree *quadTreeNew(AABB box)
 	return tree;
 }
 
+// deletes a QuadTree
 bool quadTreeDelete(QuadTree *tree) 
 {
 	int i;
@@ -57,18 +76,20 @@ bool quadTreeDelete(QuadTree *tree)
 	for(i = 0; i < QT_NUM_CHILDS; i++) {
 		return quadTreeDelete(tree->childs[i]);
 	}
-	// delete objects attached //
+	// delete objects attached to this tree node //
 	ListNode *objNode;
 	list_foreach(tree->objects, objNode) {
 		free(objNode->data);
 	}
-	// free list and delete objects attached
+	// free list
 	listDelete(tree->objects);
 	free(tree);
 	return true;
 }
 
-
+// check if this obj fits into one of this node childs
+// and return an index of which child belongs, or -1
+// if does not fit
 static int quadTreeGetIndex(QuadTree *node, QuadTreeObj *obj) 
 {
 	int i;
@@ -81,6 +102,7 @@ static int quadTreeGetIndex(QuadTree *node, QuadTreeObj *obj)
 	return -1;
 }
 
+// Split the tree in 4 quadrants, and attach them
 void quadTreeSplit(QuadTree *node)
 {	
 	float x = node->box.minX;
@@ -97,30 +119,23 @@ void quadTreeSplit(QuadTree *node)
 }
 
 
-static void printNode(QuadTree *node) 
-{
-	printf("node: {%8.2f, %8.2f, %8.2f, %8.2f}\n", 
-			node->box.minX, node->box.minY, node->box.maxX, node->box.maxY);
-}
-static void printObj (QuadTreeObj *obj) {
-	printf("obj:  {%8.2f, %8.2f, %8.2f, %8.2f}, %s\n", obj->limits.minX, obj->limits.minY, obj->limits.maxX, obj->limits.maxY, (char *)obj->data);
-}
 
 bool quadTreeInsertObj(QuadTree *node, QuadTreeObj *obj)
 {
 	int idx;
 	// object cannot fit in this node //
 	if(!aabbFitsInAABB(obj->limits, node->box)) {
-		printf("!fits\n");
 		return false;
 	}
 
-	if(node->childs[0] == NULL && node->objects->items < 2) {
+	// if is leaf and has enough objects room
+	if(node->childs[0] == NULL && node->objects->items < QT_TREE_MAX_OBJECTS) {
 		if(listAdd(node->objects, obj)) {
 			return true;
 		}
 		return false;
 	}
+	// if is leaf, not splitted and no more room
 	else if(node->childs[0] == NULL) {
 		quadTreeSplit(node);
 		
@@ -137,6 +152,7 @@ bool quadTreeInsertObj(QuadTree *node, QuadTreeObj *obj)
 			}
 		}
 	}
+	// do the cha-cha 
 	idx = quadTreeGetIndex(node, obj);
 	if(idx == -1) {
 		listAdd(node->objects, obj); 
@@ -148,7 +164,8 @@ bool quadTreeInsertObj(QuadTree *node, QuadTreeObj *obj)
 
 }
 
-void printNodes(QuadTree *node, int depth) {
+static void printNodes(QuadTree *node, int depth) 
+{
 	if(!node)
 		return;
 	int i;
@@ -168,12 +185,12 @@ void printNodes(QuadTree *node, int depth) {
 }
 
 
-bool quadTreeInsert(QuadTree *node, AABB limits, void *data) 
+bool quadTreeInsert(QuadTree *root, AABB limits, void *data) 
 {
 	QuadTreeObj *obj = quadTreeObjNew(limits, data);
-	if(!quadTreeInsertObj(node, obj)) {
+	if(!quadTreeInsertObj(root, obj)) {
 		printObj(obj);
-		printNode(node);
+		printNode(root);
 		quadTreeObjDelete(obj);
 		return false;
 	}
@@ -182,8 +199,8 @@ bool quadTreeInsert(QuadTree *node, AABB limits, void *data)
 
 
 
-void quadTreeFind(QuadTree *node, AABB limits, List *result) {
-	printf(".");
+void quadTreeGetIntersections(QuadTree *node, AABB limits, List *result) 
+{
 	// return if limits does not intersect this quad
 	if(!aabbIntersect(&node->box, &limits))	 {
 		return;
@@ -201,8 +218,8 @@ void quadTreeFind(QuadTree *node, AABB limits, List *result) {
 	// return if it has no childs //
 	if(node->childs[0] == NULL)
 		return;
-	for(int i = 0; i < 4; i++) {
-		quadTreeFind(node->childs[i], limits, result);
+	for(int i = 0; i < QT_NUM_CHILDS; i++) {
+		quadTreeGetIntersections(node->childs[i], limits, result);
 	}
 }
 
@@ -254,14 +271,19 @@ void quadTreeTest()
 	box = aabb(6, 6, 8, 8);
 	assert(quadTreeInsert(tree, box, "Sixth Node"));
 	
-	printf("\n\n\n");
-	printNodes(tree, 0);
-	printf("\n\n\n");
 
 	List *res = listNew(NULL);
-	AABB limits = aabb(-10, -10, 0, 0);
 	
-	quadTreeFind(tree, limits, res);
+	AABB limits = aabb(0, 0, 10, 10);
+	quadTreeGetIntersections(tree, limits, res);
+	assert(res->items == 4);
+	listDelete(res);
+	
+	res = listNew(NULL);
+	limits = aabb(5, 5, 10, 10);
+	quadTreeGetIntersections(tree, limits, res);
+	assert(res->items == 1);
+	assert(strcmp(((QuadTreeObj *)res->head->data)->data, "Sixth Node") == 0);	
 
 	ListNode *objNode;
 	list_foreach(res, objNode) {
@@ -269,6 +291,6 @@ void quadTreeTest()
 		printObj(obj);
 	}
 	listDelete(res);
-//	assert(strcmp("STOP HERE", "Continue on quaternions, they are fun!!")== 0);
+//	assert(strcmp("STOP HERE", "Continue on quadtree, they are fun!!")== 0);
 }
 #endif

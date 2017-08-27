@@ -19,8 +19,6 @@ typedef struct {
 } QuadTreeObj;
 
 
-QuadTreeObj *quadTreeObjNew(AABB limits, void *data);
-void quadTreeObjDelete(QuadTreeObj *obj);
 
 // a node
 typedef struct QuadTree {
@@ -29,7 +27,14 @@ typedef struct QuadTree {
 	List *objects;
 } QuadTree;
 
-QuadTree *quadTreeNew();
+
+
+QuadTree *quadTreeNew(AABB limits);
+bool quadTreeDelete(QuadTree *root);
+bool quadTreeInsert(QuadTree *root, AABB limits, void *data);
+void quadTreeGetIntersections(QuadTree *node, AABB limits, List *result);
+
+
 
 void quadTreeTest();
 

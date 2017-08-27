@@ -145,7 +145,7 @@ void arrayTest()
 		{"Gheorghe", "Vasile", 29},
 	};
 
-	int i;
+	unsigned int i;
 	Array *arr = arrayNew();
 	for(i = 0; i < LEN(employees); i++) {
 		arrayAdd(arr, &employees[i]);
