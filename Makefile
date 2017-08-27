@@ -18,6 +18,9 @@ mrb_lib/mrb_lib.a: mrb_lib/Makefile mrb_lib/*.h mrb_lib/*.c
 %o: %.c Makefile
 	$(CC) $(CFLAGS) $(OFLAGS) -o $@ $<
 
+run: $(TARGET)
+	./$(TARGET)
+
 clean:
 	rm $(OBJECTS) $(TARGET)
 	$(MAKE) -C mrb_lib clean

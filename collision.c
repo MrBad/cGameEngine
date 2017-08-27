@@ -3,6 +3,8 @@
 #include "user.h"
 #include "game.h"
 #include "mrb_lib/vec2f.h"
+#include "mrb_lib/quad_tree.h"
+
 
 // bounding check fast collision check
 inline bool isColliding(Rect *a, Rect *b) 
@@ -125,15 +127,39 @@ void checkAllCollisions(Game *game)
 	int i;
 	//Vec2f newPos, distance;
 	Sprite *s;
+	
+	QuadTree *qtree;
+    qtree = quadTreeNew(aabb(0, 0, game->level->maxWidth, game->level->maxHeight));
 
+	ListNode *node; User *user;
+	listForeach(game->users, node, user) {
+		AABB uBox = aabb(user->pos.x, user->pos.y, user->pos.x+USER_WIDTH, user->pos.y+USER_HEIGHT);
+		quadTreeAdd(qtree, uBox, user);
+	}
 
+	QTSurfaces *res = surfacesNew();
+	
+	listForeach(game->users, node, user) {
+		AABB queryBox = aabb(user->pos.x, user->pos.y, 
+				user->pos.x + USER_WIDTH, user->pos.y + USER_HEIGHT);
+		quadTreeGetIntersections(qtree, queryBox, res);
+		for(i = 0; i < res->items; i++) {
+			userUserCollision(user, res->data[i]->data, game);
+		}
+		quadTreeResetResults(res);
+	}
+	
+
+#if 0
 	ListNode *nodeA, *nodeB;
 	for(nodeA = game->users->head; nodeA; nodeA = nodeA->next) {
 		for(nodeB = nodeA->next; nodeB; nodeB = nodeB->next) {
 			userUserCollision(nodeA->data, nodeB->data, game);
 		}	
 	}
-	
+#endif
+
+#if 0	
 	// check bricks / walls collisions //
 	for(i = 0; i < game->level->mapBatch->spritesLen; i++) {
 
@@ -154,5 +180,29 @@ void checkAllCollisions(Game *game)
 			}
 		}	
 	}
+#endif 
+	quadTreeDelete(qtree);
+
+    qtree = quadTreeNew(aabb(-100, -100, game->level->maxWidth+100, game->level->maxHeight+100));
+	for(i = 0; i < game->level->mapBatch->spritesLen; i++) {
+		s = game->level->mapBatch->sprites[i];
+		AABB bBox = aabb(s->x, s->y, s->x+s->width, s->y+s->height);
+		quadTreeAdd(qtree, bBox, s);
+	}
+
+	listForeach(game->users, node, user) {
+		
+		AABB queryBox = aabb(user->pos.x, user->pos.y, 
+				user->pos.x + USER_WIDTH, user->pos.y + USER_HEIGHT);
+		quadTreeGetIntersections(qtree, queryBox, res);
+		for(i = 0; i < res->items; i++) {
+			userBrickCollision(user, res->data[i]->data);
+			user->direction = vec2fRotate(user->direction, rand() % 45);
+		}
+		quadTreeResetResults(res);
+	}
+
+	quadTreeFreeResults(res);
+	quadTreeDelete(qtree);
 }
 

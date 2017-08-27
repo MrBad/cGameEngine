@@ -2,6 +2,7 @@
 #define GAME_H
 
 #include <assert.h>
+#include <signal.h>
 #include "mrb_lib/window.h"
 #include "mrb_lib/gl_program.h"
 #include "mrb_lib/camera.h"
