@@ -1,12 +1,20 @@
 #include "game.h"
 #include "mrb_lib/array.h"
+#include "mrb_lib/aabb.h"
+#include "mrb_lib/list.h"
+#include "mrb_lib/quad_tree.h"
+
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
+
 
 #ifdef DO_TESTS
 void doTests()
 {
 	arrayTest();
+	aabbTest();
+	listTest();
+	quadTreeTest();
 }
 #endif
 

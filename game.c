@@ -9,6 +9,7 @@
 
 #define SIZE(a) sizeof(a)/sizeof(*a)
 
+
 Game *gameNew() 
 {
 	Game *game;
@@ -86,16 +87,16 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 	initPlayer(game);
 
 	// populate game->users; //
-	size_t i = 0;
-	game->users = arrayNew();
-	assert(game->users != NULL);	
-	arrayAdd(game->users, game->player);
+	game->users = listNew(NULL);
+	listAdd(game->users, game->player);
 
-	for(i = 0; i < game->humans->len; i++)
-		arrayAdd(game->users, game->humans->data[i]);
+	ListNode *node; User *human, *zombie;
 	
-	for(i = 0; i < game->zombies->len; i++)
-		arrayAdd(game->users, game->zombies->data[i]);
+	listForeach(game->humans, node, human)
+		listAdd(game->users, human);
+
+	listForeach(game->zombies, node, zombie)
+		listAdd(game->users, zombie);
 
 	cameraSetPosition(game->cam, game->player->pos.x, game->player->pos.y);
 	return true;
@@ -103,7 +104,6 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 
 void gameDelete(Game *game) 
 {
-	size_t i;
 	if(game->prog) {
 		glProgramDelete(game->prog);
 		game->prog = NULL;
@@ -117,14 +117,14 @@ void gameDelete(Game *game)
 		game->cam = NULL;
 	}
 
-	for(i = 0; i < game->users->len; i++) {
-		User *u = game->users->data[i];
-		spriteDelete(u->sprite);
-		userDelete(u);
+	ListNode *node; User *user;
+	listForeach(game->users, node, user) {
+		spriteDelete(user->sprite);
+		userDelete(user);
 	}
-	arrayDelete(game->users);
-	arrayDelete(game->humans);
-	arrayDelete(game->zombies);
+	listDelete(game->users);
+	listDelete(game->humans);
+	listDelete(game->zombies);
 	
 	sbDelete(game->usersBatch);
 	levelDelete(game->level);

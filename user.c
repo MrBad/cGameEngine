@@ -1,4 +1,3 @@
-
 #include "user.h"
 #include "game.h"
 
@@ -46,7 +45,7 @@ void initZombies(Game *game)
 	float speed;
 	Sprite *sprite; 
 	Color c;
-	game->zombies = arrayNew();
+	game->zombies = listNew(NULL);
 	
 	for(i = 0; i < game->level->zombiesLen; i++) {	
 		pos = game->level->zombiesPos[i];
@@ -56,7 +55,7 @@ void initZombies(Game *game)
 				game->level->textures[CIRCLE_TEX]->id);
 		c = color(255, 0, 0, 255);
 		spriteSetColor(sprite, &c);
-		arrayAdd(game->zombies, userNew(pos, speed, sprite, ZOMBIE));
+		listAdd(game->zombies, userNew(pos, speed, sprite, ZOMBIE));
 		sbAddSprite(game->usersBatch, sprite);
 	}
 
@@ -69,7 +68,7 @@ void initHumans(Game *game)
 	float speed;
 	Sprite *sprite;
 	Color c;
-	game->humans = arrayNew();
+	game->humans = listNew(NULL);
 
 	for(i = 0; i < game->level->numHumans; i++) {
 		// init humans //
@@ -83,7 +82,7 @@ void initHumans(Game *game)
 				game->level->textures[CIRCLE_TEX]->id);
 		c = color(rand() % 128, rand() % 255, rand() % 128, 255);
 		spriteSetColor(sprite, &c);
-		arrayAdd(game->humans, userNew(pos, speed, sprite, HUMAN));
+		listAdd(game->humans, userNew(pos, speed, sprite, HUMAN));
 		// add the sprite to users batches
 		sbAddSprite(game->usersBatch, sprite);
 	}
@@ -120,8 +119,8 @@ inline Rect userGetRect(User *user)
 void humansUpdate(Game *game) 
 {
 	// update human position //
-	for(int i = 0; i < arrayLen(game->humans); i++) {
-		User *human = arrayGet(game->humans, i);
+	ListNode *node; User *human;
+	listForeach(game->humans, node, human) {
 		if(game->totalFrames % 30 == 0) {// change his direction once half a second
 			human->direction = vec2fRotate(human->direction, rand() %10);
 		}
@@ -136,8 +135,8 @@ User *getNearUser(Game *game, User *user)
 	Vec2f distVec;
 	float minDistance = 0xFFFFFF, sqLen;
 	User *closestUser = user;
-	for(int i = 0; i < arrayLen(game->users); i++) {
-		User *other = arrayGet(game->users, i);
+	User *other; ListNode *node;
+	listForeach(game->users, node, other) {
 		if(other->type != HUMAN)
 			continue;
 		distVec = vec2fSub(other->pos, user->pos);
@@ -153,16 +152,18 @@ User *getNearUser(Game *game, User *user)
 void zombiesUpdate(Game *game)
 {
 	// update zombies position - TODO find nearest human and hunt him//
-	for(int i = 0; i < arrayLen(game->zombies); i++) {
-		User *zombie = arrayGet(game->zombies, i);
-		User *nearHuman = getNearUser(game, zombie);
-		Vec2f newDir = vec2fSub(nearHuman->pos, zombie->pos);
-		zombie->direction = vec2fNormalize(newDir);
-#if 0
-		if(game->totalFrames % 20 == 0) {// change his direction once half a second
+	//
+	ListNode *node; User *zombie;
+	listForeach(game->zombies, node, zombie) {
+		if(game->totalFrames % 20 == 0) {		
+			User *nearHuman = getNearUser(game, zombie);
+			Vec2f newDir = vec2fSub(nearHuman->pos, zombie->pos);
+			zombie->direction = vec2fNormalize(newDir);
+		} 
+		else { 
 			zombie->direction = vec2fRotate(zombie->direction, rand() %10);
 		}
-#endif		
+
 		Vec2f newPos = vec2fMulS(zombie->direction, zombie->speed);
 		newPos = vec2fAdd(zombie->pos, newPos);
 		userSetPos(zombie, newPos);

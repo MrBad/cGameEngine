@@ -12,7 +12,7 @@ inline bool isColliding(Rect *a, Rect *b)
 				(a->x + a->width <= b->x) ||
 				(a->y >= b->y + b->height) || 
 				(a->y+a->height <= b->y)
-	));
+			));
 }
 
 
@@ -84,15 +84,15 @@ void userUserCollision(User *a, User *b, Game *game)
 			User *other = a->type == ZOMBIE ? b : a;
 			
 			if(other->type == HUMAN) { // zombie collided with human, transform human into zombie
-				arrayDel(game->humans, other);
+				listDel(game->humans, other);
 				// transform human into zombie
 				other->type = ZOMBIE;
 				other->speed = 1.5f;
 				spriteSetColor(other->sprite, &zombie->sprite->color);
 				// and add it to zombie list
-				arrayAdd(game->zombies, other);
+				listAdd(game->zombies, other);
 
-				if(game->humans->len == 0) {
+				if(game->humans->items == 0) {
 					fprintf(stdout, "YOU LOOSE\n");
 					SDL_Delay(2000);
 					game->state = GAME_OVER;
@@ -101,15 +101,15 @@ void userUserCollision(User *a, User *b, Game *game)
 
 			if(other->type == PLAYER) {
 				// resurect zombie - transform it to human
-				arrayDel(game->zombies, zombie);
+				listDel(game->zombies, zombie);
 				// transform zombie to human
 				zombie->type = HUMAN;
 				zombie->speed = 1.0f;
 				Color color = {rand()%128, rand()%255, rand()%128, 255};
 				spriteSetColor(zombie->sprite, &color);
-				arrayAdd(game->humans, zombie);
+				listAdd(game->humans, zombie);
 
-				if(game->zombies->len == 0) {
+				if(game->zombies->items == 0) {
 					fprintf(stdout, "YOU WIN!\n");
 					SDL_Delay(2000);
 					game->state = GAME_OVER;
@@ -122,17 +122,16 @@ void userUserCollision(User *a, User *b, Game *game)
 //TODO - use quad tree to check collision
 void checkAllCollisions(Game *game)
 {
-	int i, j;
+	int i;
 	//Vec2f newPos, distance;
 	Sprite *s;
-	int numUsers = arrayLen(game->users);
 
-	for(i = 0; i < numUsers; i++) {
-		User *a = arrayGet(game->users, i);
-		for(j = i + 1; j < arrayLen(game->users); j++) {
-			User *b = arrayGet(game->users, j);
-			userUserCollision(a, b, game);
-		}
+
+	ListNode *nodeA, *nodeB;
+	for(nodeA = game->users->head; nodeA; nodeA = nodeA->next) {
+		for(nodeB = nodeA->next; nodeB; nodeB = nodeB->next) {
+			userUserCollision(nodeA->data, nodeB->data, game);
+		}	
 	}
 	
 	// check bricks / walls collisions //
@@ -145,16 +144,15 @@ void checkAllCollisions(Game *game)
 		if(isColliding(&a, &b)) {
 			userBrickCollision(game->player, s);
 		}
-		
-		for(int j = 0; j < numUsers; j++) {
-			User *user = arrayGet(game->users, j);
+	
+		User *user; ListNode *node;
+		listForeach(game->users, node, user) {
 			Rect a = userGetRect(user);
-
 			if(isColliding(&a, &b)) {
 				userBrickCollision(user, s);
 				user->direction = vec2fRotate(user->direction, rand() % 45);
 			}
-		}
+		}	
 	}
 }
 

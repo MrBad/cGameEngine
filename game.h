@@ -1,12 +1,13 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include <assert.h>
 #include "mrb_lib/window.h"
 #include "mrb_lib/gl_program.h"
 #include "mrb_lib/camera.h"
 #include "mrb_lib/inmgr.h"
 #include "mrb_lib/sprite_batch.h"
-#include "mrb_lib/array.h"
+#include "mrb_lib/list.h"
 #include "user.h"
 #include "level.h"
 
@@ -31,9 +32,9 @@ typedef struct {
 
 	Level *level;
 	User *player;
-	Array *zombies;
-	Array *humans;
-	Array *users;	// ptr to a list of all users, used in collide
+	List *zombies;
+	List *humans;
+	List *users;	// ptr to a list of all users, used in collide
 	unsigned long totalFrames;
 } Game;
 
