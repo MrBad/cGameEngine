@@ -14,7 +14,7 @@
 // Surface functions //
 //
 // creates a surface
-static QTSurface *surfaceNew(AABB limits, void *data) 
+QTSurface *surfaceNew(AABB limits, void *data) 
 {
 	QTSurface *s = malloc(sizeof(QTSurface));
 	if(!s) {
@@ -29,9 +29,18 @@ static QTSurface *surfaceNew(AABB limits, void *data)
 
 
 // destroy surface
-static void surfaceDelete(QTSurface *surface) 
+void surfaceDelete(QTSurface *surface) 
 {
 	free(surface);
+}
+
+
+static void printSurface(QTSurface *s)
+{
+	printf("surf: {%8.2f, %8.2f, %8.2f, %8.2f}, %p\n",
+			s->limits.minX, s->limits.minY,
+			s->limits.maxX, s->limits.maxY,
+			s->data);
 }
 //
 // Array of surfaces //
@@ -117,6 +126,7 @@ static QTNode *qtNodeNew(AABB limits)
 		perror("malloc");
 		return NULL;
 	}
+	node->parent = NULL;
 	node->limits = limits;
 	node->surfaces = surfacesNew();
 
@@ -167,11 +177,17 @@ static void qtNodeSplit(QTNode *node)
 	float maxY = node->limits.maxY;
 	float halfWidth = (maxX - x) / 2.0f;
 	float halfHeight = (maxY - y) / 2.0f;
+	int i;
 
 	node->childs[NE] = qtNodeNew(aabb(x + halfWidth, y + halfHeight, maxX, maxY));
 	node->childs[NW] = qtNodeNew(aabb(x, y + halfHeight, x + halfWidth, maxY));
 	node->childs[SW] = qtNodeNew(aabb(x, y, x + halfWidth, y + halfHeight));
 	node->childs[SE] = qtNodeNew(aabb(x + halfWidth, y, maxX, y + halfHeight));
+
+	// set parent
+	for(i = 0; i < QT_NUM_CHILDS; i++) {
+		node->childs[i]->parent = node;
+	}
 }
 
 static bool qtNodeAdd(QTNode *node, QTSurface *surface) 
@@ -179,11 +195,16 @@ static bool qtNodeAdd(QTNode *node, QTSurface *surface)
 	int i, idx;
 	// object cannot fit in this node //
 	if(!aabbFitsInAABB(surface->limits, node->limits)) {
+		fprintf(stderr, "---\nSurface out of bounds\n");
+		printSurface(surface);
+		fprintf(stderr, "Write that tree grow functions\n");
 		return false;
 	}
 	// if is leaf and has enough objects room
 	if(node->childs[NE] == NULL && node->surfaces->items < QT_TREE_MAX_OBJECTS) {
-		return surfacesAdd(node->surfaces, surface);
+		surfacesAdd(node->surfaces, surface);
+		surface->node = node;
+		return true;
 	}
 	// if is leaf, not splitted and no more room
 	else if(node->childs[NE] == NULL) {
@@ -208,10 +229,60 @@ static bool qtNodeAdd(QTNode *node, QTSurface *surface)
 	idx = qtNodeGetIndex(node, surface);
 	if(idx == -1) {
 		surfacesAdd(node->surfaces, surface);
+		surface->node = node;
 	} else {
 		return qtNodeAdd(node->childs[idx], surface);
 	}
 	return true;
+}
+
+bool QTSurfaceUpdate(QTSurface *surface, AABB newLimits) 
+{
+
+	QTNode *oldNode, *curr;
+	oldNode = surface->node;
+	// if we still fits in this node bounds, do not move
+	// just update the limits
+	if(aabbFitsInAABB(newLimits, oldNode->limits)) {
+		surface->limits = newLimits;
+		return true;
+	}
+	bool found = false; int i;
+	// else, if we do not fit it anymore, climb up the tree
+	// until we can fit inside of a node //
+	for(curr = surface->node; curr; curr = curr->parent) {
+		if(aabbFitsInAABB(newLimits, curr->limits)) {
+			found = true;
+			break;
+		}
+	}
+
+	// probably we reached root
+	if(!found) {
+		fprintf(stderr, "int surfaceUpdate - we reached root and not found any fitting node\n");
+		fprintf(stderr, "Maybe we need to grow up the tree?\n");
+		exit(1);
+		return false;
+	}
+	
+	found = false;
+	// remove the reference from oldNode list //
+	for(i = 0; i < oldNode->surfaces->size; i++) {
+		if(!oldNode->surfaces->data[i]) continue;
+		if(oldNode->surfaces->data[i] == surface) {
+			oldNode->surfaces->data[i] = NULL;
+			oldNode->surfaces->items--;
+			found = true;
+			break;
+		}	
+	}
+	if(!found) {
+		fprintf(stderr, "We did not found the surface\n");
+		return false;
+	}
+	surface->limits = newLimits;
+	// insert into newNode //
+	return qtNodeAdd(curr, surface);
 }
 
 
@@ -249,6 +320,11 @@ bool quadTreeAdd(QuadTree *tree, AABB limits, void *data)
 	return true;
 }
 
+bool quadTreeAddSurface(QuadTree *tree, QTSurface *surface) 
+{
+	return qtNodeAdd(tree->root, surface);
+}
+
 static void printNode(QTNode *node)
 {
 	printf("node: {%8.2f, %8.2f, %8.2f, %8.2f}\n",
@@ -256,13 +332,6 @@ static void printNode(QTNode *node)
 			node->limits.maxX, node->limits.maxY);
 }
 
-static void printSurface(QTSurface *s)
-{
-	printf("surf: {%8.2f, %8.2f, %8.2f, %8.2f}, %s\n",
-			s->limits.minX, s->limits.minY,
-			s->limits.maxX, s->limits.maxY,
-			(char *)s->data);
-}
 
 static void printNodes(QTNode *node, int depth) 
 {

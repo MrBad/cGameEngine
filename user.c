@@ -19,6 +19,10 @@ User *userNew(Vec2f pos, float speed, Sprite *sprite, UserType type)
 	if(user->direction.x == 0 && user->direction.y == 0)
 		user->direction = vec2f(10, 120);
 	user->velocity = vec2fMulS(user->direction, speed);
+
+	AABB limits = aabb(pos.x, pos.y, pos.x + USER_WIDTH, pos.y + USER_HEIGHT);
+	user->surface = surfaceNew(limits, user);
+
 	return user;
 }
 
@@ -27,6 +31,9 @@ void userSetPos(User *user, Vec2f pos)
 	user->sprite->x = pos.x;
 	user->sprite->y = pos.y;
 	user->pos = pos;
+
+	AABB limits = aabb(pos.x, pos.y, pos.x+USER_WIDTH, pos.y+USER_HEIGHT);
+	QTSurfaceUpdate(user->surface, limits);
 }
 inline Vec2f userGetPos(User *user) {
 	return (Vec2f) {user->pos.x, user->pos.y};
@@ -34,6 +41,8 @@ inline Vec2f userGetPos(User *user) {
 
 void userDelete(User *user) 
 {
+	// let the tree delete the surface
+	//surfaceDelete(user->surface);
 	if (user) free(user);
 }
 

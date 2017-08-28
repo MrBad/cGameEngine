@@ -2,6 +2,7 @@
 #define USER_H
 #include "mrb_lib/sprite.h"
 #include "mrb_lib/vec2f.h"
+#include "mrb_lib/quad_tree.h"
 
 #define USER_WIDTH 60
 #define USER_HEIGHT 60
@@ -20,6 +21,7 @@ typedef struct {
 	Vec2f velocity;
 	Sprite *sprite;
 	UserType type;
+	QTSurface *surface;
 } User;
 
 User *userNew(Vec2f pos, float speed, Sprite *sprite, UserType type);

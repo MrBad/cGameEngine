@@ -56,7 +56,7 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 	}
 	srand(time(NULL));
 
-	
+
 	if(!(game->prog = glProgramNew())) {
 		fprintf(stderr, "Cannot init glProgram\n");
 		return false;	
@@ -76,7 +76,7 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 
 	game->camSpeed = 5.0f;
 	game->scaleSpeed = 1.02f;
-	
+
 
 	// create new user batch //
 	game->usersBatch = sbNew(game->prog);
@@ -91,12 +91,31 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 	listAdd(game->users, game->player);
 
 	ListNode *node; User *human, *zombie;
-	
+
 	listForeach(game->humans, node, human)
 		listAdd(game->users, human);
 
 	listForeach(game->zombies, node, zombie)
 		listAdd(game->users, zombie);
+
+	AABB mapLimits = aabb(-100, -100, game->level->maxWidth+100, game->level->maxHeight+100); 
+	// do we really need 2 trees ? 
+	// how about one tree and check the intersection with type ?
+	game->bricksTree = quadTreeNew(mapLimits);
+	game->usersTree = quadTreeNew(mapLimits);
+
+	User *user;
+	listForeach(game->users, node, user) {
+		quadTreeAddSurface(game->usersTree, user->surface);
+	}
+
+	// this tree will not be updated - static bricks
+	for(int i = 0; i < game->level->mapBatch->spritesLen; i++) {
+		Sprite *s = game->level->mapBatch->sprites[i];
+		AABB bBox = aabb(s->x, s->y, s->x+s->width, s->y+s->height);
+		quadTreeAdd(game->bricksTree, bBox, s);
+	}
+
 
 	cameraSetPosition(game->cam, game->player->pos.x, game->player->pos.y);
 	return true;
@@ -117,6 +136,8 @@ void gameDelete(Game *game)
 		game->cam = NULL;
 	}
 
+	quadTreeDelete(game->bricksTree);
+	quadTreeDelete(game->usersTree);
 	ListNode *node; User *user;
 	listForeach(game->users, node, user) {
 		spriteDelete(user->sprite);
@@ -125,7 +146,7 @@ void gameDelete(Game *game)
 	listDelete(game->users);
 	listDelete(game->humans);
 	listDelete(game->zombies);
-	
+
 	sbDelete(game->usersBatch);
 	levelDelete(game->level);
 
@@ -148,7 +169,7 @@ void gameHandleInput(Game *game)
 		userSetPos(player, pos);
 		cameraSetPosition(camera, pos.x, pos.y);
 	}
-	
+
 	if(inMgrIsKeyPressed(inmgr, IM_KEY_D)) {
 		pos = vec2f(player->pos.x + player->speed, player->pos.y);
 		userSetPos(player, pos);
@@ -228,7 +249,7 @@ void gameLoop(Game *game)
 
 
 		glProgramUnuse(game->prog);
-		
+
 		windowUpdate(game->win);
 
 

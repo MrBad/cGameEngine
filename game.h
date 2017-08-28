@@ -36,6 +36,9 @@ typedef struct {
 	List *zombies;
 	List *humans;
 	List *users;	// ptr to a list of all users, used in collide
+
+	QuadTree *bricksTree;
+	QuadTree *usersTree;
 	unsigned long totalFrames;
 } Game;
 
