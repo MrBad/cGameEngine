@@ -3,7 +3,7 @@
 #include "mrb_lib/file_get.h"
 #include "mrb_lib/texture.h"
 #include "mrb_lib/sprite_batch.h"
-#include "strdup.h"
+#include "mrb_lib/strdup.h"
 
 Level *levelNew(char *path) 
 {

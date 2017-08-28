@@ -4,6 +4,17 @@
 #include "aabb.h"
 #include "list.h"
 
+
+//
+//	TODO - add an update node function that will search for old node
+//		and if changed, remove it and reinsert it back with new 
+//		positions - this will help me not rebuild all the tree
+//		every frame and speed up things
+//		- add an grow function - that will grow the tree up if 
+//		an new node with bigger limits than root try to be inserted
+//		This way we can have an infinite map...
+//		- write more tests to check for memory leaks / valgrind check
+
 enum {
 	NE,	// first quadran
 	NW, // second
