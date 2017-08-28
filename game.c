@@ -106,7 +106,11 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 
 	User *user;
 	listForeach(game->users, node, user) {
-		quadTreeAddSurface(game->usersTree, user->surface);
+		AABB uBox = aabb(
+				user->pos.x, user->pos.y, 
+				user->pos.x+USER_WIDTH, user->pos.y+USER_HEIGHT);
+		
+		user->surface = quadTreeAdd(game->usersTree, uBox, user);
 	}
 
 	// this tree will not be updated - static bricks

@@ -71,14 +71,14 @@ bool QTSurfaceUpdate(QTSurface *surface, AABB newLimits);
 
 QuadTree *quadTreeNew(AABB limits);
 void quadTreeDelete(QuadTree *tree);
-bool quadTreeAdd(QuadTree *tree, AABB limits, void *data);
-bool quadTreeAddSurface(QuadTree *tree, QTSurface *surface);
+QTSurface *quadTreeAdd(QuadTree *tree, AABB limits, void *data);
+//bool quadTreeAddSurface(QuadTree *tree, QTSurface *surface);
 
 QTSurfaces *surfacesNew();
 // query
 bool quadTreeGetIntersections(QuadTree *tree, AABB limits, QTSurfaces *results);
 void quadTreeResetResults(QTSurfaces *results);
-void quadTreeFreeResults(QTSurfaces *results); 
+void quadTreeDeleteResults(QTSurfaces *results); 
 
 void quadTreeTest();
 

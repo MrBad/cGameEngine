@@ -307,23 +307,24 @@ void quadTreeDelete(QuadTree *tree) {
 	free(tree);
 }
 
-bool quadTreeAdd(QuadTree *tree, AABB limits, void *data) 
+QTSurface *quadTreeAdd(QuadTree *tree, AABB limits, void *data) 
 {
 	QTSurface *surface = surfaceNew(limits, data);
 	if(!surface) {
-		return false;
+		return NULL;
 	}
 	if(!qtNodeAdd(tree->root, surface)) {
 		surfaceDelete(surface);
-		return false;
+		return NULL;
 	}
-	return true;
+	return surface;
 }
-
+#if 0
 bool quadTreeAddSurface(QuadTree *tree, QTSurface *surface) 
 {
 	return qtNodeAdd(tree->root, surface);
 }
+#endif
 
 static void printNode(QTNode *node)
 {
@@ -394,7 +395,7 @@ void quadTreeResetResults(QTSurfaces *results)
 	memset(results->data, 0, results->size * sizeof(*results->data));
 }
 
-void quadTreeFreeResults(QTSurfaces *results) 
+void quadTreeDeleteResults(QTSurfaces *results) 
 {
 	if(results) 
 		surfacesDelete(results);
@@ -479,7 +480,7 @@ void quadTreeTest()
 		printSurface(res->data[i]);
 	}
 	quadTreeResetResults(res);
-	quadTreeFreeResults(res);
+	quadTreeDeleteResults(res);
 
 	printTree(tree);
 	

@@ -154,6 +154,6 @@ void checkAllCollisions(Game *game)
 		quadTreeResetResults(res);
 	}
 
-	quadTreeFreeResults(res);
+	quadTreeDeleteResults(res);
 }
 

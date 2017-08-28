@@ -20,8 +20,8 @@ User *userNew(Vec2f pos, float speed, Sprite *sprite, UserType type)
 		user->direction = vec2f(10, 120);
 	user->velocity = vec2fMulS(user->direction, speed);
 
-	AABB limits = aabb(pos.x, pos.y, pos.x + USER_WIDTH, pos.y + USER_HEIGHT);
-	user->surface = surfaceNew(limits, user);
+//	AABB limits = aabb(pos.x, pos.y, pos.x + USER_WIDTH, pos.y + USER_HEIGHT);
+//	user->surface = surfaceNew(limits, user);
 
 	return user;
 }
