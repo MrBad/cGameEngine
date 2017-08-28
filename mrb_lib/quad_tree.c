@@ -236,6 +236,29 @@ static bool qtNodeAdd(QTNode *node, QTSurface *surface)
 	return true;
 }
 
+// climb up the tree and remove empty nodes //
+// why i never get any?!?!
+bool qtNodeDeleteUp(QTNode *node) 
+{	
+	QTNode *n = node->parent;
+	int surfacesLeft = 0;
+	int i;
+	for(i = 0; i < QT_NUM_CHILDS; i++) {
+		surfacesLeft += n->childs[i]->surfaces->items;
+		if(n->childs[i]->childs[NE] != NULL || surfacesLeft > 0)
+			return false;
+	}
+	if(surfacesLeft == 0) {
+		for(i = 0; i < QT_NUM_CHILDS; i++) {
+			qtNodeDelete(n->childs[i], true);
+			n->childs[i] = NULL;
+		}
+		if(n->surfaces->items == 0) {
+			qtNodeDeleteUp(n);
+		}
+	}
+	return true;
+}
 bool QTSurfaceUpdate(QTSurface *surface, AABB newLimits) 
 {
 
@@ -281,8 +304,14 @@ bool QTSurfaceUpdate(QTSurface *surface, AABB newLimits)
 		return false;
 	}
 	surface->limits = newLimits;
+
 	// insert into newNode //
-	return qtNodeAdd(curr, surface);
+	bool ret = qtNodeAdd(curr, surface);
+	
+	// check if old node is empty and is leaf and if it's neibghors are too, remove all
+	if(oldNode->childs[NE] == 0)
+		qtNodeDeleteUp(oldNode);
+	return ret;	
 }
 
 
