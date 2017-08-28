@@ -70,7 +70,7 @@ static void surfacesDelete(QTSurfaces *surfaces)
 static bool surfacesGrow(QTSurfaces *arr) 
 {
 
-	int numElements = arr->size == 0 ? 2 : arr->size * 2;
+	int numElements = arr->size == 0 ? 16 : arr->size * 2;
 	arr->data = realloc(arr->data, numElements * sizeof(*arr->data));
 	if(!arr->data) {
 		perror("realloc");
@@ -84,7 +84,7 @@ static bool surfacesGrow(QTSurfaces *arr)
 
 static bool surfacesAdd(QTSurfaces *arr, QTSurface *s) 
 {
-	
+
 	if(arr->items == arr->size) {
 		if(!surfacesGrow(arr)) {
 			return false;
@@ -357,38 +357,38 @@ void quadTreeTest()
 	assert(tree->root->childs[NE] == NULL);
 	assert(tree->root->surfaces->items == 1);
 	assert(((QTSurface *)tree->root->surfaces->data[0])->limits.minX == 3);
-    assert(((QTSurface *)tree->root->surfaces->data[0])->limits.maxX == 5);
+	assert(((QTSurface *)tree->root->surfaces->data[0])->limits.maxX == 5);
 
 	box = aabb(-5, 2, -3, 4);
-    assert(quadTreeAdd(tree, box, "Second Node"));
-    assert(tree->root->childs[NE] == NULL);
-    assert(tree->root->surfaces->items == 2);
-    assert(((QTSurface *)tree->root->surfaces->data[1])->limits.minX == -5);
-    assert(((QTSurface *)tree->root->surfaces->data[1])->limits.maxX == -3);
+	assert(quadTreeAdd(tree, box, "Second Node"));
+	assert(tree->root->childs[NE] == NULL);
+	assert(tree->root->surfaces->items == 2);
+	assert(((QTSurface *)tree->root->surfaces->data[1])->limits.minX == -5);
+	assert(((QTSurface *)tree->root->surfaces->data[1])->limits.maxX == -3);
 	assert(strcmp(((QTSurface *)tree->root->surfaces->data[1])->data, "Second Node")== 0);
 
 	// it should split
-    box = aabb(-5, -7, -3, -5);
-    assert(quadTreeAdd(tree, box, "Third Node"));
+	box = aabb(-5, -7, -3, -5);
+	assert(quadTreeAdd(tree, box, "Third Node"));
 
 
-    assert(tree->root->surfaces->items == 0);
-    assert(tree->root->childs[NE]->surfaces->items == 1);
-    assert(tree->root->childs[NW]->surfaces->items == 1);
-    assert(tree->root->childs[SW]->surfaces->items == 1);
-    assert(tree->root->childs[SE]->surfaces->items == 0);
+	assert(tree->root->surfaces->items == 0);
+	assert(tree->root->childs[NE]->surfaces->items == 1);
+	assert(tree->root->childs[NW]->surfaces->items == 1);
+	assert(tree->root->childs[SW]->surfaces->items == 1);
+	assert(tree->root->childs[SE]->surfaces->items == 0);
 
 	box = aabb(2, 4, 4, 6);
-    assert(quadTreeAdd(tree, box, "Forth Node"));
-
-	
-    box = aabb(1, 1, 3, 3);
-    assert(quadTreeAdd(tree, box, "Fifth Node"));
+	assert(quadTreeAdd(tree, box, "Forth Node"));
 
 
-    box = aabb(6, 6, 8, 8);
-    assert(quadTreeAdd(tree, box, "Sixth Node"));
-	
+	box = aabb(1, 1, 3, 3);
+	assert(quadTreeAdd(tree, box, "Fifth Node"));
+
+
+	box = aabb(6, 6, 8, 8);
+	assert(quadTreeAdd(tree, box, "Sixth Node"));
+
 	QTSurfaces *res = surfacesNew(); 
 	AABB queryBox = aabb(0, 0, 10, 10);
 	quadTreeGetIntersections(tree, queryBox, res);
@@ -403,13 +403,17 @@ void quadTreeTest()
 	}
 	quadTreeResetResults(res);
 
+
 	queryBox = aabb(5, 5, 10, 10);
 	quadTreeGetIntersections(tree, queryBox, res);
 	for(i = 0; i < res->items; i++) {
 		printSurface(res->data[i]);
 	}
 	quadTreeResetResults(res);
+	quadTreeFreeResults(res);
+
 	printTree(tree);
+	
 	quadTreeDelete(tree);
 
 }
