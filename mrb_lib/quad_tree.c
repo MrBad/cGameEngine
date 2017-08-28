@@ -62,6 +62,7 @@ static void surfacesDelete(QTSurfaces *surfaces)
 			}
 		}
 	}
+	free(surfaces->data);
 	free(surfaces);	
 }
 

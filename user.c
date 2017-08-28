@@ -151,17 +151,17 @@ User *getNearUser(Game *game, User *user)
 
 void zombiesUpdate(Game *game)
 {
-	// update zombies position - TODO find nearest human and hunt him//
+	// update zombies position //
 	//
 	ListNode *node; User *zombie;
 	listForeach(game->zombies, node, zombie) {
-		if(game->totalFrames % 20 == 0) {		
+		if(game->totalFrames % 60 == 0) {	// only once a second hunt near human
 			User *nearHuman = getNearUser(game, zombie);
 			Vec2f newDir = vec2fSub(nearHuman->pos, zombie->pos);
 			zombie->direction = vec2fNormalize(newDir);
 		} 
 		else { 
-			zombie->direction = vec2fRotate(zombie->direction, rand() %10);
+			zombie->direction = vec2fRotate(zombie->direction, (rand()%10)*sin(rand()%7));
 		}
 
 		Vec2f newPos = vec2fMulS(zombie->direction, zombie->speed);
