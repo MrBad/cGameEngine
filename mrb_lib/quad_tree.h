@@ -9,7 +9,12 @@
 //	TODO - add an update node function that will search for old node
 //		and if changed, remove it and reinsert it back with new 
 //		positions - this will help me not rebuild all the tree
-//		every frame and speed up things
+//		every frame and speed up things. Because sprites will not 
+//		change their position too much, it meens they don't need to be moved
+//		far into the tree - so a good algorithm will be to keep track of 
+//		parent nodes. on reinsert - just go up into the tree from current node
+//		and check nearest planes... this will be faster than reinserting sprite
+//		into root...
 //		- add an grow function - that will grow the tree up if 
 //		an new node with bigger limits than root try to be inserted
 //		This way we can have an infinite map...
