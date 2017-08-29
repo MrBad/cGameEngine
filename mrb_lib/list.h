@@ -1,5 +1,5 @@
-#ifndef _LIST_H
-#define _LIST_H
+#ifndef LIST_H
+#define LIST_H
 
 #include <stdbool.h>
 
@@ -28,6 +28,7 @@ bool listDel(List *list, void *element);
 
 #define list_foreach(list, node) \
 	for(node = list->head; node; node = node->next)
+
 #define listForeach(list, node, obj) \
 	for(node = list->head; node && (obj = node->data); node = node->next)
 

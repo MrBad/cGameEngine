@@ -1,36 +1,46 @@
 #ifndef ARRAY_H
 #define ARRAY_H
 
-
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-typedef struct {
+#include <string.h>
+#include <assert.h>
+
+
+typedef struct Array Array;
+
+struct Array {
 	void **data;
-	size_t len;
-	size_t size;
-} Array;
+	int len; 
+	int size;
+};
 
 
-Array *arrayNew();
-void *arrayAdd(Array *a, void *element);
+Array* arrayNew(Array **array);
 
-#define arrayLen(a) (int) a->len
-//static inline int arrayLen(Array *arr) { return arr->len; }
-static inline size_t arraySize(Array *arr) { return arr->size; }
-#define arrayGet(a, i) a->data[i]
-//static inline void *arrayGet(Array *arr, int i) { return arr->data[i]; }
+void arrayDelete(Array **array);
 
-// not safe in for loops
-bool arrayDelIdx(Array *a, size_t idx);
-// not safe 
-bool arrayDel(Array *arr, void *element);
+void arrayPush(Array *arr, void *element);
+void *arrayPop(Array *arr);
 
-int arrayIndexOf(Array *arr, void *element);
+void *arrayShift(Array *arr);
+void arrayUnshift(Array *arr, void *element);
+
 int arrayCompact(Array *arr);
 
-void arrayDelete(Array *arr);
+int arrayIndexOf(Array *arr, void *element);
+
+bool arraySet(Array *arr, int idx, void *element);
+
+void *arrayGet(Array *arr, int idx);
+
+static inline int arrayLen(Array *arr) { return arr->len; }
+
+#define arrayForeach(array, element, idx) \
+	for(idx = 0; idx < arr->len && ((element = arr->data[idx]) || true); idx++)
 
 void arrayTest();
 
-#endif // ARRAY_H
 
+#endif

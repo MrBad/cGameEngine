@@ -26,4 +26,3 @@ run: $(TARGET) *.o *.c *.h
 clean:
 	rm $(OBJECTS) $(TARGET)
 	$(MAKE) -C mrb_lib clean
-	$(MAKE) -C test clean

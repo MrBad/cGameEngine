@@ -40,7 +40,7 @@ static bool gameInitShaders(Game *game)
 
 bool gameInit(Game *game, int winWidth, int winHeight, const char *title) 
 {
-
+	AABB mapLimits; 
 	game->state = GAME_PLAYING;
 	if(!(game->win = windowNew(title, winWidth, winHeight, 0))) {
 		fprintf(stderr, "Cannot init window\n");
@@ -98,10 +98,10 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 	listForeach(game->zombies, node, zombie)
 		listAdd(game->users, zombie);
 
-	AABB mapLimits = aabb(
+	mapLimits = aabb(
 			0, 0, game->level->maxWidth, game->level->maxHeight);
 	
-	//AABB mapLimits = aabb(0, 0, 256, 256);
+	mapLimits = aabb(0, 0, 256, 256);
 	// do we really need 2 trees ? 
 	// how about one tree and check the intersection with type ?
 	game->bricksTree = quadTreeNew(mapLimits);
