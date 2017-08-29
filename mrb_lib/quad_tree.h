@@ -34,12 +34,14 @@ enum {
 };
  
 typedef struct QTNode QTNode;
+typedef struct QuadTree QuadTree;
 
 // an object in the node //
 typedef struct {
-	AABB limits;	// this object bounding box
+	AABB limits;		// this object bounding box
+	QuadTree *tree;		// ugly, but i need a reference to tree, so i can expand it if i need
 	QTNode *node;		// node where it is insert
-	void *data;		// pointer to whatever aditional info needed
+	void *data;			// pointer to whatever aditional info needed
 } QTSurface;
 
 
@@ -57,17 +59,17 @@ struct QTNode {
 	QTSurfaces *surfaces;		// array of pointers containing surfaces in this node
 };
 
-typedef struct {
+struct QuadTree {
 	QTNode *root;
 	int items;
-} QuadTree;
+};
 
 
 // surface - maybe i will call it Entity //
 QTSurface *surfaceNew(AABB limits, void *data);
 void surfaceDelete(QTSurface *surface);
 
-bool QTSurfaceUpdate(QTSurface *surface, AABB newLimits);
+bool surfaceUpdate(QTSurface *surface, AABB newLimits);
 
 QuadTree *quadTreeNew(AABB limits);
 void quadTreeDelete(QuadTree *tree);
@@ -81,6 +83,7 @@ void quadTreeResetResults(QTSurfaces *results);
 void quadTreeDeleteResults(QTSurfaces *results); 
 
 void quadTreeTest();
+
 
 
 #endif

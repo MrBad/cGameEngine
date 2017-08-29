@@ -155,6 +155,7 @@ bool loadLevel(Level *level, GLProgram *prog)
 		level->maxWidth = x > level->maxWidth ? x : level->maxWidth;
 		level->maxHeight = y > level->maxHeight ? y : level->maxHeight;
 	}
-
+	level->maxWidth += 64;
+	level->maxHeight += 64;
 	return true;	
 }

@@ -64,6 +64,8 @@ void userBrickCollision(User *user, Sprite *brick)
 void userUserCollision(User *a, User *b, Game *game)
 {
 	Vec2f distVec = vec2fSub(a->pos, b->pos);
+	if(a == b)
+		return;
 	if(distVec.x * distVec.x + distVec.y * distVec.y < USER_WIDTH * USER_WIDTH) {
 		float minDistance = USER_WIDTH;
 		float distance = vec2fLength(distVec);
@@ -94,7 +96,7 @@ void userUserCollision(User *a, User *b, Game *game)
 				// and add it to zombie list
 				listAdd(game->zombies, other);
 
-				if(game->humans->items == 0) {
+				if(false && game->humans->items == 0) {
 					fprintf(stdout, "YOU LOOSE\n");
 					SDL_Delay(2000);
 					game->state = GAME_OVER;

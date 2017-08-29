@@ -9,7 +9,9 @@ MAKE=make
 TARGET=cgame
 OBJECTS= main.o game.o level.o user.o collision.o
 
-all: $(OBJECTS) Makefile mrb_lib/mrb_lib.a
+all: $(TARGET)
+
+$(TARGET): $(OBJECTS) Makefile mrb_lib/mrb_lib.a
 	$(CC) $(CFLAGS) $(DFLAGS) -o $(TARGET) $(OBJECTS) $(LIBS)
 
 mrb_lib/mrb_lib.a: mrb_lib/Makefile mrb_lib/*.h mrb_lib/*.c
@@ -18,7 +20,7 @@ mrb_lib/mrb_lib.a: mrb_lib/Makefile mrb_lib/*.h mrb_lib/*.c
 %o: %.c Makefile
 	$(CC) $(CFLAGS) $(OFLAGS) -o $@ $<
 
-run: $(TARGET)
+run: $(TARGET) *.o *.c *.h
 	./$(TARGET)
 
 clean:

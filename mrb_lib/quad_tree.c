@@ -1,5 +1,6 @@
 #include "quad_tree.h"
 #include "aabb.h"
+#include "vec2f.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,6 +10,9 @@
 // Maximum number of objects in a node 
 // before splitting node //
 #define QT_TREE_MAX_OBJECTS 2
+
+
+static bool quadTreeExpand(QuadTree *tree, AABB newLimits);
 
 //
 // Surface functions //
@@ -106,7 +110,7 @@ static bool surfacesAdd(QTSurfaces *arr, QTSurface *s)
 			return true;
 		}
 	}
-	fprintf(stdout, "WTF\n");
+	fprintf(stdout, "surfacesAdd - probably memory corruption\n");
 	exit(1);
 	return false;
 }
@@ -197,7 +201,7 @@ static bool qtNodeAdd(QTNode *node, QTSurface *surface)
 	if(!aabbFitsInAABB(surface->limits, node->limits)) {
 		fprintf(stderr, "---\nSurface out of bounds\n");
 		printSurface(surface);
-		fprintf(stderr, "Write that tree grow functions\n");
+		fprintf(stderr, "Write that tree expand functions\n");
 		return false;
 	}
 	// if is leaf and has enough objects room
@@ -237,12 +241,13 @@ static bool qtNodeAdd(QTNode *node, QTSurface *surface)
 }
 
 // climb up the tree and remove empty nodes //
-// why i never get any?!?!
 bool qtNodeDeleteUp(QTNode *node) 
 {	
 	QTNode *n = node->parent;
 	int surfacesLeft = 0;
 	int i;
+	// if all four nodes have no surfaces 
+	// and they are leafs
 	for(i = 0; i < QT_NUM_CHILDS; i++) {
 		surfacesLeft += n->childs[i]->surfaces->items;
 		if(n->childs[i]->childs[NE] != NULL || surfacesLeft > 0)
@@ -254,23 +259,33 @@ bool qtNodeDeleteUp(QTNode *node)
 			n->childs[i] = NULL;
 		}
 		if(n->surfaces->items == 0) {
-			qtNodeDeleteUp(n);
+			return qtNodeDeleteUp(n);
 		}
 	}
 	return true;
 }
-bool QTSurfaceUpdate(QTSurface *surface, AABB newLimits) 
+
+static void printAABB(AABB limits) 
+{
+	printf("{%8.2f, %8.2f, %8.2f, %8.2f}\n",
+			limits.minX, limits.minY, limits.maxX, limits.maxY);
+}
+
+bool surfaceUpdate(QTSurface *surface, AABB newLimits) 
 {
 
 	QTNode *oldNode, *curr;
+	bool ret, found;
+	int i;
 	oldNode = surface->node;
+	assert(surface);	
 	// if we still fits in this node bounds, do not move
 	// just update the limits
 	if(aabbFitsInAABB(newLimits, oldNode->limits)) {
 		surface->limits = newLimits;
 		return true;
 	}
-	bool found = false; int i;
+	found = false;
 	// else, if we do not fit it anymore, climb up the tree
 	// until we can fit inside of a node //
 	for(curr = surface->node; curr; curr = curr->parent) {
@@ -282,10 +297,20 @@ bool QTSurfaceUpdate(QTSurface *surface, AABB newLimits)
 
 	// probably we reached root
 	if(!found) {
-		fprintf(stderr, "int surfaceUpdate - we reached root and not found any fitting node\n");
-		fprintf(stderr, "Maybe we need to grow up the tree?\n");
-		exit(1);
-		return false;
+		fprintf(stderr, "surfaceUpdate: we reached root and not found any fitting node\n");
+		fprintf(stderr, "surfaceUpdate: expanding tree\n");
+		////////
+		// Expand Tree, added a reference to tree in surface ///
+		// Don't like this, but... 
+		// How to solve this in an elegant mode?
+		////////////////////////
+		quadTreeExpand(surface->tree, newLimits);
+		////////////////////////
+		assert(curr != NULL);
+		printAABB(newLimits);
+		printAABB(surface->node->limits);
+		//exit(1);
+		//return false;
 	}
 	
 	found = false;
@@ -306,7 +331,7 @@ bool QTSurfaceUpdate(QTSurface *surface, AABB newLimits)
 	surface->limits = newLimits;
 
 	// insert into newNode //
-	bool ret = qtNodeAdd(curr, surface);
+	ret = qtNodeAdd(curr, surface);
 	
 	// check if old node is empty and is leaf and if it's neibghors are too, remove all
 	if(oldNode->childs[NE] == 0)
@@ -320,7 +345,8 @@ bool QTSurfaceUpdate(QTSurface *surface, AABB newLimits)
 //
 
 // All operations are done on Quad Tree
-QuadTree *quadTreeNew(AABB limits) {
+QuadTree *quadTreeNew(AABB limits) 
+{
 	QuadTree *tree = malloc(sizeof(*tree));
 	if(!tree) {
 		perror("malloc");
@@ -331,9 +357,89 @@ QuadTree *quadTreeNew(AABB limits) {
 	return tree;
 }
 
-void quadTreeDelete(QuadTree *tree) {
+void quadTreeDelete(QuadTree *tree) 
+{
 	qtNodeDelete(tree->root, true);
 	free(tree);
+}
+
+
+// expands the tree when a newLimits are bigger than the root itself limits
+static bool quadTreeExpand(QuadTree *tree, AABB newLimits) 
+{
+	printf("initial root limits: ");
+	printAABB(tree->root->limits);
+	printf("requested surface: ");
+	printAABB(newLimits);
+
+	AABB doubleLimits;
+	AABB oldLimits = tree->root->limits;
+	// find the direction where we should grow //
+	Vec2f dist = vec2f(newLimits.minX - oldLimits.minX, newLimits.minY - oldLimits.minY);
+	Vec2f dir = vec2fNormalize(dist);
+
+	float width = oldLimits.maxX - oldLimits.minX;
+	float height = oldLimits.maxY - oldLimits.minY;
+	
+	//in which direction we grow?
+	if(dir.x > 0) {
+		if(dir.y > 0) { // NE
+			printf("NE\n");
+			doubleLimits = aabb(
+				oldLimits.minX, oldLimits.minY, 
+				oldLimits.maxX + width, oldLimits.maxY + height);	
+		} 
+		else { // SE
+			printf("SE\n");
+			doubleLimits = aabb(
+				oldLimits.minX, oldLimits.minY - height, 
+				oldLimits.maxX + width, oldLimits.maxY);
+		}
+	} 
+	else {
+		if (dir.y > 0) { // NW
+			printf("NW\n");			
+			doubleLimits = aabb(
+				oldLimits.minX - width, oldLimits.minY, 
+				oldLimits.maxX, oldLimits.maxY + height);
+		} 
+		else { // SW
+			printf("SW\n");
+			doubleLimits = aabb(
+				oldLimits.minX - width, oldLimits.minY - height, 
+				oldLimits.maxX, oldLimits.maxY);
+		}
+	}
+
+	printf("Doubled the limits to: ");
+	printAABB(doubleLimits);
+	QTNode *newRoot = qtNodeNew(doubleLimits);
+	// i will not manually compute each quadrant, tired...
+	qtNodeSplit(newRoot);
+	tree->root->parent = newRoot;
+	
+	if(dir.x > 0) { 
+		if(dir.y > 0) {// NE, 
+			qtNodeDelete(newRoot->childs[SW], true);
+			newRoot->childs[SW] = tree->root;
+		} else {//SE
+			qtNodeDelete(newRoot->childs[NW], true);
+			newRoot->childs[NW] = tree->root;
+		}
+	} else {
+		if(dir.y > 0) { //NW
+			qtNodeDelete(newRoot->childs[SE], true);
+			newRoot->childs[SE] = tree->root;	
+		} else { // SW
+			qtNodeDelete(newRoot->childs[NE], true);
+			newRoot->childs[NE] = tree->root;
+		}
+	}
+	tree->root = newRoot;
+	if(!aabbFitsInAABB(newLimits, doubleLimits)) {
+		quadTreeExpand(tree, newLimits);
+	}
+	return true;
 }
 
 QTSurface *quadTreeAdd(QuadTree *tree, AABB limits, void *data) 
@@ -342,18 +448,19 @@ QTSurface *quadTreeAdd(QuadTree *tree, AABB limits, void *data)
 	if(!surface) {
 		return NULL;
 	}
+	//
+	if(!aabbFitsInAABB(limits, tree->root->limits)) {
+		printf("quadTreeExpand is experimental\n");
+		quadTreeExpand(tree, limits);
+	}
+	
 	if(!qtNodeAdd(tree->root, surface)) {
 		surfaceDelete(surface);
 		return NULL;
 	}
+	surface->tree = tree;
 	return surface;
 }
-#if 0
-bool quadTreeAddSurface(QuadTree *tree, QTSurface *surface) 
-{
-	return qtNodeAdd(tree->root, surface);
-}
-#endif
 
 static void printNode(QTNode *node)
 {
@@ -381,7 +488,8 @@ static void printNodes(QTNode *node, int depth)
 	}
 	depth--;
 }
-static void printTree(QuadTree *tree) 
+
+void printTree(QuadTree *tree) 
 {
 	printNodes(tree->root, 0);
 }
@@ -511,7 +619,7 @@ void quadTreeTest()
 	quadTreeResetResults(res);
 	quadTreeDeleteResults(res);
 
-	printTree(tree);
+	//printTree(tree);
 	
 	quadTreeDelete(tree);
 

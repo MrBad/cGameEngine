@@ -98,7 +98,10 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 	listForeach(game->zombies, node, zombie)
 		listAdd(game->users, zombie);
 
-	AABB mapLimits = aabb(-100, -100, game->level->maxWidth+100, game->level->maxHeight+100); 
+	AABB mapLimits = aabb(
+			0, 0, game->level->maxWidth, game->level->maxHeight);
+	
+	//AABB mapLimits = aabb(0, 0, 256, 256);
 	// do we really need 2 trees ? 
 	// how about one tree and check the intersection with type ?
 	game->bricksTree = quadTreeNew(mapLimits);
@@ -119,7 +122,6 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 		AABB bBox = aabb(s->x, s->y, s->x+s->width, s->y+s->height);
 		quadTreeAdd(game->bricksTree, bBox, s);
 	}
-
 
 	cameraSetPosition(game->cam, game->player->pos.x, game->player->pos.y);
 	return true;
@@ -142,6 +144,7 @@ void gameDelete(Game *game)
 
 	quadTreeDelete(game->bricksTree);
 	quadTreeDelete(game->usersTree);
+
 	ListNode *node; User *user;
 	listForeach(game->users, node, user) {
 		spriteDelete(user->sprite);

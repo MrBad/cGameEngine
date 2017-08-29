@@ -20,9 +20,9 @@ bool aabbIntersect(AABB *a, AABB *b)
 bool aabbFitsInAABB(AABB a, AABB b) 
 {
 	return b.minX < a.minX
-		&& b.maxX > a.maxX
+		&& b.maxX >= a.maxX
 		&& b.minY < a.minY
-		&& b.maxY > a.maxY;
+		&& b.maxY >= a.maxY;
 }
 
 #ifdef COMPILE_TESTS
