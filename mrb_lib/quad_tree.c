@@ -18,33 +18,34 @@ static bool quadTreeExpand(QuadTree *tree, AABB newLimits);
 // Surface functions //
 //
 // creates a surface
-QTSurface *surfaceNew(AABB limits, void *data) 
+QTObject *objectNew(AABB limits, void *data) 
 {
-	QTSurface *s = malloc(sizeof(QTSurface));
-	if(!s) {
+	QTObject *obj = malloc(sizeof(*obj));
+	if(!obj) {
 		perror("malloc");
 		return NULL;
 	}
-
-	s->limits = limits;
-	s->data = data;
-	return s;
+	obj->limits = limits;
+	obj->data = data;
+	obj->tree = NULL;
+	obj->node = NULL;
+	return obj;
 }
 
 
 // destroy surface
-void surfaceDelete(QTSurface *surface) 
+void objectDelete(QTObject *obj) 
 {
-	free(surface);
+	free(obj);
 }
 
 
-static void printSurface(QTSurface *s)
+static void printObject(QTObject *obj)
 {
 	printf("surf: {%8.2f, %8.2f, %8.2f, %8.2f}, %p\n",
-			s->limits.minX, s->limits.minY,
-			s->limits.maxX, s->limits.maxY,
-			s->data);
+			obj->limits.minX, obj->limits.minY,
+			obj->limits.maxX, obj->limits.maxY,
+			obj->data);
 }
 
 
@@ -77,14 +78,14 @@ static QTNode *qtNodeNew(AABB limits)
 static void qtNodeDelete(QTNode *node, bool recurse)
 {
 	int i;
-	QTSurface *surface;
+	QTObject *obj;
 	if(recurse && node->childs[NE]) {
 		for(i = 0; i < QT_NUM_CHILDS; i++) {
 			qtNodeDelete(node->childs[i], recurse);
 		}
 	}
-	arrayForeach(node->objects	, surface, i) {
-		surfaceDelete(surface);
+	arrayForeach(node->objects, obj, i) {
+		objectDelete(obj);
 	}
 	arrayDelete(&node->objects);
 	free(node);
@@ -94,12 +95,12 @@ static void qtNodeDelete(QTNode *node, bool recurse)
 // check if this obj fits into one of this node childs
 // and return an index of which child belongs, or -1
 // if does not fit
-static int qtNodeGetIndex(QTNode *node, QTSurface *surface)
+static int qtNodeGetIndex(QTNode *node, QTObject *obj)
 {
 	int i;
 	for(i = 0; i < QT_NUM_CHILDS; i++) {
 		assert(node->childs[i] != NULL);
-		if(aabbFitsInAABB(surface->limits, node->childs[i]->limits))
+		if(aabbFitsInAABB(obj->limits, node->childs[i]->limits))
 			return i;
 	}
 	// does not fit into any child
@@ -128,20 +129,20 @@ static void qtNodeSplit(QTNode *node)
 	}
 }
 
-static bool qtNodeAdd(QTNode *node, QTSurface *surface) 
+static bool qtNodeAdd(QTNode *node, QTObject *obj) 
 {
 	int i, idx;
-	QTSurface *oldSurface;
+	QTObject *oldObj;
 	// object cannot fit in this node //
-	if(!aabbFitsInAABB(surface->limits, node->limits)) {
+	if(!aabbFitsInAABB(obj->limits, node->limits)) {
 		fprintf(stderr, "---\nSurface out of bounds\n");
-		printSurface(surface);
+		printObject(obj);
 		return false;
 	}
 	// if is leaf and has enough objects room
 	if(node->childs[NE] == NULL && node->objects->len < QT_TREE_MAX_OBJECTS) {
-		arrayPush(node->objects, surface);
-		surface->node = node;
+		arrayPush(node->objects, obj);
+		obj->node = node;
 		return true;
 	}
 	// if is leaf, not splitted and no more room
@@ -150,12 +151,12 @@ static bool qtNodeAdd(QTNode *node, QTSurface *surface)
 		qtNodeSplit(node); 
 
 		// move it's surfaces to childs, if possible
-		arrayForeach(node->objects, oldSurface, i) {
-			idx = qtNodeGetIndex(node, oldSurface);	
+		arrayForeach(node->objects, oldObj, i) {
+			idx = qtNodeGetIndex(node, oldObj);	
 			if(idx == -1)
 				continue;
 			else {
-				if(qtNodeAdd(node->childs[idx], oldSurface)) {
+				if(qtNodeAdd(node->childs[idx], oldObj)) {
 					node->objects->data[i] = NULL;
 				}
 			}
@@ -164,12 +165,12 @@ static bool qtNodeAdd(QTNode *node, QTSurface *surface)
 	}
 
 	// add original node into one of the childs
-	idx = qtNodeGetIndex(node, surface);
+	idx = qtNodeGetIndex(node, obj);
 	if(idx == -1) {
-		arrayPush(node->objects, surface);
-		surface->node = node;
+		arrayPush(node->objects, obj);
+		obj->node = node;
 	} else {
-		return qtNodeAdd(node->childs[idx], surface);
+		return qtNodeAdd(node->childs[idx], obj);
 	}
 	return true;
 }
@@ -205,24 +206,24 @@ static void printAABB(AABB limits)
 			limits.minX, limits.minY, limits.maxX, limits.maxY);
 }
 
-bool surfaceUpdate(QTSurface *surface, AABB newLimits) 
+bool qtObjectUpdate(QTObject *obj, AABB newLimits) 
 {
 
 	QTNode *oldNode, *curr;
 	bool ret, found;
 	int i;
-	oldNode = surface->node;
-	assert(surface);	
+	oldNode = obj->node;
+	assert(obj);	
 	// if we still fits in this node bounds, do not move
 	// just update the limits
 	if(aabbFitsInAABB(newLimits, oldNode->limits)) {
-		surface->limits = newLimits;
+		obj->limits = newLimits;
 		return true;
 	}
 	found = false;
 	// else, if we do not fit it anymore, climb up the tree
 	// until we can fit inside of a node //
-	for(curr = surface->node; curr; curr = curr->parent) {
+	for(curr = obj->node; curr; curr = curr->parent) {
 		if(aabbFitsInAABB(newLimits, curr->limits)) {
 			found = true;
 			break;
@@ -238,15 +239,15 @@ bool surfaceUpdate(QTSurface *surface, AABB newLimits)
 		// Don't like this, but... 
 		// How to solve this in an elegant mode?
 		////////////////////////
-		quadTreeExpand(surface->tree, newLimits);
+		quadTreeExpand(obj->tree, newLimits);
 		////////////////////////
 		assert(curr != NULL);
 		printAABB(newLimits);
-		printAABB(surface->node->limits);
+		printAABB(obj->node->limits);
 		//exit(1);
 		//return false;
 	}
-	i = arrayIndexOf(oldNode->objects, surface);
+	i = arrayIndexOf(oldNode->objects, obj);
 	if(i < 0) {
 		fprintf(stderr, "We did not found the surface\n");
 		return false;
@@ -254,9 +255,9 @@ bool surfaceUpdate(QTSurface *surface, AABB newLimits)
 	
 	oldNode->objects->data[i] = NULL; // remove
 	arrayCompact(oldNode->objects);
-	surface->limits = newLimits;
+	obj->limits = newLimits;
 	// insert into newNode //
-	ret = qtNodeAdd(curr, surface);
+	ret = qtNodeAdd(curr, obj);
 	
 	// check if old node is empty and is leaf and if it's neibghors are too, remove all
 	if(oldNode->childs[NE] == 0)
@@ -367,10 +368,10 @@ static bool quadTreeExpand(QuadTree *tree, AABB newLimits)
 	return true;
 }
 
-QTSurface *quadTreeAdd(QuadTree *tree, AABB limits, void *data) 
+QTObject *quadTreeAdd(QuadTree *tree, AABB limits, void *data) 
 {
-	QTSurface *surface = surfaceNew(limits, data);
-	if(!surface) {
+	QTObject *obj = objectNew(limits, data);
+	if(!obj) {
 		return NULL;
 	}
 	//
@@ -379,12 +380,12 @@ QTSurface *quadTreeAdd(QuadTree *tree, AABB limits, void *data)
 		quadTreeExpand(tree, limits);
 	}
 	
-	if(!qtNodeAdd(tree->root, surface)) {
-		surfaceDelete(surface);
+	if(!qtNodeAdd(tree->root, obj)) {
+		objectDelete(obj);
 		return NULL;
 	}
-	surface->tree = tree;
-	return surface;
+	obj->tree = tree;
+	return obj;
 }
 
 static void printNode(QTNode *node)
@@ -405,7 +406,7 @@ static void printNodes(QTNode *node, int depth)
 	printf("objects: %d\n", node->objects->len);
 	for(i = 0; i < node->objects->size; i++) {	
 		if(node->objects->data[i])
-			printSurface(node->objects->data[i]);
+			printObject(node->objects->data[i]);
 	}
 	depth++;
 	for(i = 0; i < 4; i++) {
@@ -431,7 +432,7 @@ static bool qtNodeGetIntersections(QTNode *node, AABB limits, Array *result)
 	for(i = 0; i < node->objects->size; i++) {
 		if(node->objects->data[i] == NULL)
 			continue;
-		if(aabbIntersect(&limits, &((QTSurface*)node->objects->data[i])->limits)) {
+		if(aabbIntersect(&limits, &((QTObject*)node->objects->data[i])->limits)) {
 			arrayPush(result, node->objects->data[i]);
 		}
 	}
@@ -459,12 +460,12 @@ void quadTreeTest()
 	int i;
 	AABB box = aabb(-10, -10, 10, 10);
 	char *str = "Surface";
-	QTSurface *s;
-	s = surfaceNew(box, str);
-	assert(s->limits.minX == box.minX);
-	assert(s->limits.minY == box.minY);
-	assert(strcmp(s->data, str) == 0);
-	surfaceDelete(s);
+	QTObject *obj;
+	obj = objectNew(box, str);
+	assert(obj->limits.minX == box.minX);
+	assert(obj->limits.minY == box.minY);
+	assert(strcmp(obj->data, str) == 0);
+	objectDelete(obj);
 
 	printf("Testing QuadTree\n");
 	box = aabb(-10, -10, 10, 10);
@@ -476,16 +477,16 @@ void quadTreeTest()
 	assert(quadTreeAdd(tree, box, "First Node"));
 	assert(tree->root->childs[NE] == NULL);
 	assert(tree->root->objects->len == 1);
-	assert(((QTSurface *)tree->root->objects->data[0])->limits.minX == 3);
-	assert(((QTSurface *)tree->root->objects->data[0])->limits.maxX == 5);
+	assert(((QTObject *)tree->root->objects->data[0])->limits.minX == 3);
+	assert(((QTObject *)tree->root->objects->data[0])->limits.maxX == 5);
 
 	box = aabb(-5, 2, -3, 4);
 	assert(quadTreeAdd(tree, box, "Second Node"));
 	assert(tree->root->childs[NE] == NULL);
 	assert(tree->root->objects->len == 2);
-	assert(((QTSurface *)tree->root->objects->data[1])->limits.minX == -5);
-	assert(((QTSurface *)tree->root->objects->data[1])->limits.maxX == -3);
-	assert(strcmp(((QTSurface *)tree->root->objects->data[1])->data, "Second Node")== 0);
+	assert(((QTObject *)tree->root->objects->data[1])->limits.minX == -5);
+	assert(((QTObject *)tree->root->objects->data[1])->limits.maxX == -3);
+	assert(strcmp(((QTObject *)tree->root->objects->data[1])->data, "Second Node")== 0);
 
 	// it should split
 	box = aabb(-5, -7, -3, -5);
@@ -514,12 +515,12 @@ void quadTreeTest()
 	quadTreeGetIntersections(tree, queryBox, res);
 	assert(res->len == 4);
 	for(i = 0; i < res->len; i++) {
-		s = res->data[i];
-		assert(aabbIntersect(&s->limits, &queryBox));
+		obj = res->data[i];
+		assert(aabbIntersect(&obj->limits, &queryBox));
 	}
 	printf("Result 1:\n");
 	for(i = 0; i < res->len; i++) {
-		printSurface(res->data[i]);
+		printObject(res->data[i]);
 	}
 	arrayReset(res);
 
@@ -527,7 +528,7 @@ void quadTreeTest()
 	queryBox = aabb(5, 5, 10, 10);
 	quadTreeGetIntersections(tree, queryBox, res);
 	for(i = 0; i < res->len; i++) {
-		printSurface(res->data[i]);
+		printObject(res->data[i]);
 	}
 	arrayReset(res);
 	arrayDelete(&res);

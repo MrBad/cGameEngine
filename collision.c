@@ -138,7 +138,7 @@ void checkAllCollisions(Game *game)
 				user->pos.x + USER_WIDTH, user->pos.y + USER_HEIGHT);
 		quadTreeGetIntersections(game->usersTree, queryBox, res);
 		for(i = 0; i < res->len; i++) {
-			userUserCollision(user, ((QTSurface*)res->data[i])->data, game);
+			userUserCollision(user, ((QTObject *)res->data[i])->data, game);
 		}
 		arrayReset(res);
 	}
@@ -150,7 +150,7 @@ void checkAllCollisions(Game *game)
 				user->pos.x + USER_WIDTH, user->pos.y + USER_HEIGHT);
 		quadTreeGetIntersections(game->bricksTree, queryBox, res);
 		for(i = 0; i < res->len; i++) {
-			userBrickCollision(user, ((QTSurface*)res->data[i])->data);
+			userBrickCollision(user, ((QTObject *)res->data[i])->data);
 			user->direction = vec2fRotate(user->direction, rand() % 45);
 		}
 		arrayReset(res);

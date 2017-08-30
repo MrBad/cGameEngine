@@ -42,7 +42,7 @@ typedef struct {
 	QuadTree *tree;		// ugly, but i need a reference to tree, so i can expand it if i need
 	QTNode *node;		// node where it is insert
 	void *data;			// pointer to whatever aditional info needed
-} QTSurface;
+} QTObject;
 
 
 // a node
@@ -60,14 +60,12 @@ struct QuadTree {
 
 
 // surface - maybe i will call it Entity //
-QTSurface *surfaceNew(AABB limits, void *data);
-void surfaceDelete(QTSurface *surface);
 
-bool surfaceUpdate(QTSurface *surface, AABB newLimits);
+bool qtObjectUpdate(QTObject *surface, AABB newLimits);
 
 QuadTree *quadTreeNew(AABB limits);
 void quadTreeDelete(QuadTree *tree);
-QTSurface *quadTreeAdd(QuadTree *tree, AABB limits, void *data);
+QTObject *quadTreeAdd(QuadTree *tree, AABB limits, void *data);
 //bool quadTreeAddSurface(QuadTree *tree, QTSurface *surface);
 
 // query

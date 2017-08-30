@@ -113,7 +113,7 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
 				user->pos.x, user->pos.y, 
 				user->pos.x+USER_WIDTH, user->pos.y+USER_HEIGHT);
 		
-		user->surface = quadTreeAdd(game->usersTree, uBox, user);
+		user->qtObj = quadTreeAdd(game->usersTree, uBox, user);
 	}
 
 	// this tree will not be updated - static bricks

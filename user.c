@@ -33,7 +33,7 @@ void userSetPos(User *user, Vec2f pos)
 	user->pos = pos;
 
 	AABB limits = aabb(pos.x, pos.y, pos.x+USER_WIDTH, pos.y+USER_HEIGHT);
-	surfaceUpdate(user->surface, limits);
+	qtObjectUpdate(user->qtObj, limits);
 }
 
 inline Vec2f userGetPos(User *user) 

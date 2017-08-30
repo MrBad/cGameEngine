@@ -21,7 +21,7 @@ typedef struct {
 	Vec2f velocity;
 	Sprite *sprite;
 	UserType type;
-	QTSurface *surface;
+	QTObject *qtObj;
 } User;
 
 User *userNew(Vec2f pos, float speed, Sprite *sprite, UserType type);
