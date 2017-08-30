@@ -191,7 +191,6 @@ void arrayTest()
 	}
 
 	arrayDelete(&arr);
-	exit(0);
 }
 
 #endif // COMPILE_TESTS
