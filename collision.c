@@ -130,17 +130,17 @@ void checkAllCollisions(Game *game)
 	ListNode *node; User *user;
 	AABB queryBox;
 
-	QTSurfaces *res = surfacesNew();
+	Array *res = arrayNew();
 	
 	// check user-user collision by querying user qtree
 	listForeach(game->users, node, user) {
 		AABB queryBox = aabb(user->pos.x, user->pos.y, 
 				user->pos.x + USER_WIDTH, user->pos.y + USER_HEIGHT);
 		quadTreeGetIntersections(game->usersTree, queryBox, res);
-		for(i = 0; i < res->items; i++) {
-			userUserCollision(user, res->data[i]->data, game);
+		for(i = 0; i < res->len; i++) {
+			userUserCollision(user, ((QTSurface*)res->data[i])->data, game);
 		}
-		quadTreeResetResults(res);
+		arrayReset(res);
 	}
 
 	// check user-brick collision by querying the qtree
@@ -149,13 +149,13 @@ void checkAllCollisions(Game *game)
 		queryBox = aabb(user->pos.x, user->pos.y, 
 				user->pos.x + USER_WIDTH, user->pos.y + USER_HEIGHT);
 		quadTreeGetIntersections(game->bricksTree, queryBox, res);
-		for(i = 0; i < res->items; i++) {
-			userBrickCollision(user, res->data[i]->data);
+		for(i = 0; i < res->len; i++) {
+			userBrickCollision(user, ((QTSurface*)res->data[i])->data);
 			user->direction = vec2fRotate(user->direction, rand() % 45);
 		}
-		quadTreeResetResults(res);
+		arrayReset(res);
 	}
 
-	quadTreeDeleteResults(res);
+	arrayDelete(&res);
 }
 

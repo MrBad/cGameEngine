@@ -46,74 +46,6 @@ static void printSurface(QTSurface *s)
 			s->limits.maxX, s->limits.maxY,
 			s->data);
 }
-//
-// Array of surfaces //
-//
-
-QTSurfaces *surfacesNew() 
-{
-	QTSurfaces *s = malloc(sizeof(*s));
-	if(!s) {
-		perror("malloc");
-		return NULL;
-	}
-	s->data = NULL;
-	s->items = 0;
-	s->size = 0;
-	return s;
-}
-
-static void surfacesDelete(QTSurfaces *surfaces) 
-{
-	int i;
-	assert(surfaces);
-
-	if(surfaces->data) {
-		for(i = 0; i < surfaces->size; i++) {
-			if(surfaces->data[i]) {
-				surfaceDelete(surfaces->data[i]);
-			}
-		}
-	}
-	free(surfaces->data);
-	free(surfaces);	
-}
-
-
-static bool surfacesGrow(QTSurfaces *arr) 
-{
-
-	int numElements = arr->size == 0 ? 16 : arr->size * 2;
-	arr->data = realloc(arr->data, numElements * sizeof(*arr->data));
-	if(!arr->data) {
-		perror("realloc");
-		return false;
-	}
-	while(arr->size < numElements)
-		arr->data[arr->size++] = NULL;
-
-	return true;
-}
-
-static bool surfacesAdd(QTSurfaces *arr, QTSurface *s) 
-{
-
-	if(arr->items == arr->size) {
-		if(!surfacesGrow(arr)) {
-			return false;
-		}
-	}
-	for(int i = 0; i < arr->size; i++) {
-		if(arr->data[i] == NULL) {
-			arr->data[i] = s;
-			arr->items++;
-			return true;
-		}
-	}
-	fprintf(stdout, "surfacesAdd - probably memory corruption\n");
-	exit(1);
-	return false;
-}
 
 
 //
@@ -132,7 +64,7 @@ static QTNode *qtNodeNew(AABB limits)
 	}
 	node->parent = NULL;
 	node->limits = limits;
-	node->surfaces = surfacesNew();
+	node->objects = arrayNew();
 
 	for(i = 0; i < QT_NUM_CHILDS; i++) {
 		node->childs[i] = NULL;
@@ -145,14 +77,16 @@ static QTNode *qtNodeNew(AABB limits)
 static void qtNodeDelete(QTNode *node, bool recurse)
 {
 	int i;
+	QTSurface *surface;
 	if(recurse && node->childs[NE]) {
 		for(i = 0; i < QT_NUM_CHILDS; i++) {
 			qtNodeDelete(node->childs[i], recurse);
 		}
 	}
-	if(node->surfaces)
-		surfacesDelete(node->surfaces);
-
+	arrayForeach(node->objects	, surface, i) {
+		surfaceDelete(surface);
+	}
+	arrayDelete(&node->objects);
 	free(node);
 }
 
@@ -197,42 +131,42 @@ static void qtNodeSplit(QTNode *node)
 static bool qtNodeAdd(QTNode *node, QTSurface *surface) 
 {
 	int i, idx;
+	QTSurface *oldSurface;
 	// object cannot fit in this node //
 	if(!aabbFitsInAABB(surface->limits, node->limits)) {
 		fprintf(stderr, "---\nSurface out of bounds\n");
 		printSurface(surface);
-		fprintf(stderr, "Write that tree expand functions\n");
 		return false;
 	}
 	// if is leaf and has enough objects room
-	if(node->childs[NE] == NULL && node->surfaces->items < QT_TREE_MAX_OBJECTS) {
-		surfacesAdd(node->surfaces, surface);
+	if(node->childs[NE] == NULL && node->objects->len < QT_TREE_MAX_OBJECTS) {
+		arrayPush(node->objects, surface);
 		surface->node = node;
 		return true;
 	}
 	// if is leaf, not splitted and no more room
 	else if(node->childs[NE] == NULL) {
-		qtNodeSplit(node);
-		for(i = 0; i < node->surfaces->size; i++) {
-			if(!node->surfaces->data[i]) {
+		// split the node in 4
+		qtNodeSplit(node); 
+
+		// move it's surfaces to childs, if possible
+		arrayForeach(node->objects, oldSurface, i) {
+			idx = qtNodeGetIndex(node, oldSurface);	
+			if(idx == -1)
 				continue;
-			}
-			QTSurface *oldSurface = node->surfaces->data[i];
-			idx = qtNodeGetIndex(node, oldSurface);
-			if(idx == -1) {
-				continue;
-			} else {
+			else {
 				if(qtNodeAdd(node->childs[idx], oldSurface)) {
-					node->surfaces->data[i] = NULL;
-					node->surfaces->items--;
+					node->objects->data[i] = NULL;
 				}
 			}
 		}
+		arrayCompact(node->objects); // because we nulled some items
 	}
+
 	// add original node into one of the childs
 	idx = qtNodeGetIndex(node, surface);
 	if(idx == -1) {
-		surfacesAdd(node->surfaces, surface);
+		arrayPush(node->objects, surface);
 		surface->node = node;
 	} else {
 		return qtNodeAdd(node->childs[idx], surface);
@@ -249,7 +183,7 @@ bool qtNodeDeleteUp(QTNode *node)
 	// if all four nodes have no surfaces 
 	// and they are leafs
 	for(i = 0; i < QT_NUM_CHILDS; i++) {
-		surfacesLeft += n->childs[i]->surfaces->items;
+		surfacesLeft += n->childs[i]->objects->len;
 		if(n->childs[i]->childs[NE] != NULL || surfacesLeft > 0)
 			return false;
 	}
@@ -258,7 +192,7 @@ bool qtNodeDeleteUp(QTNode *node)
 			qtNodeDelete(n->childs[i], true);
 			n->childs[i] = NULL;
 		}
-		if(n->surfaces->items == 0) {
+		if(n->objects->len == 0) {
 			return qtNodeDeleteUp(n);
 		}
 	}
@@ -312,24 +246,15 @@ bool surfaceUpdate(QTSurface *surface, AABB newLimits)
 		//exit(1);
 		//return false;
 	}
-	
-	found = false;
-	// remove the reference from oldNode list //
-	for(i = 0; i < oldNode->surfaces->size; i++) {
-		if(!oldNode->surfaces->data[i]) continue;
-		if(oldNode->surfaces->data[i] == surface) {
-			oldNode->surfaces->data[i] = NULL;
-			oldNode->surfaces->items--;
-			found = true;
-			break;
-		}	
-	}
-	if(!found) {
+	i = arrayIndexOf(oldNode->objects, surface);
+	if(i < 0) {
 		fprintf(stderr, "We did not found the surface\n");
 		return false;
 	}
+	
+	oldNode->objects->data[i] = NULL; // remove
+	arrayCompact(oldNode->objects);
 	surface->limits = newLimits;
-
 	// insert into newNode //
 	ret = qtNodeAdd(curr, surface);
 	
@@ -477,10 +402,10 @@ static void printNodes(QTNode *node, int depth)
 
 	printf("---- NodeDepth: %d\n", depth);
 	printNode(node);
-	printf("objects: %d\n", node->surfaces->items);
-	for(i = 0; i < node->surfaces->size; i++) {	
-		if(node->surfaces->data[i])
-			printSurface(node->surfaces->data[i]);
+	printf("objects: %d\n", node->objects->len);
+	for(i = 0; i < node->objects->size; i++) {	
+		if(node->objects->data[i])
+			printSurface(node->objects->data[i]);
 	}
 	depth++;
 	for(i = 0; i < 4; i++) {
@@ -494,7 +419,7 @@ void printTree(QuadTree *tree)
 	printNodes(tree->root, 0);
 }
 
-static bool qtNodeGetIntersections(QTNode *node, AABB limits, QTSurfaces *result) 
+static bool qtNodeGetIntersections(QTNode *node, AABB limits, Array *result) 
 {
 	int i;
 	// return if limits does not intersect this quad
@@ -503,11 +428,11 @@ static bool qtNodeGetIntersections(QTNode *node, AABB limits, QTSurfaces *result
 	}
 	// Check objects at this quad level and add them
 	// if they intersect limits
-	for(i = 0; i < node->surfaces->size; i++) {
-		if(node->surfaces->data[i] == NULL)
+	for(i = 0; i < node->objects->size; i++) {
+		if(node->objects->data[i] == NULL)
 			continue;
-		if(aabbIntersect(&limits, &node->surfaces->data[i]->limits)) {
-			surfacesAdd(result, node->surfaces->data[i]);
+		if(aabbIntersect(&limits, &((QTSurface*)node->objects->data[i])->limits)) {
+			arrayPush(result, node->objects->data[i]);
 		}
 	}
 
@@ -521,21 +446,9 @@ static bool qtNodeGetIntersections(QTNode *node, AABB limits, QTSurfaces *result
 	return true;	
 }
 
-bool quadTreeGetIntersections(QuadTree *tree, AABB limits, QTSurfaces *result) 
+bool quadTreeGetIntersections(QuadTree *tree, AABB limits, Array *result) 
 {
 	return qtNodeGetIntersections(tree->root, limits, result);	
-}
-
-void quadTreeResetResults(QTSurfaces *results) 
-{
-	results->items = 0;
-	memset(results->data, 0, results->size * sizeof(*results->data));
-}
-
-void quadTreeDeleteResults(QTSurfaces *results) 
-{
-	if(results) 
-		surfacesDelete(results);
 }
 
 
@@ -562,28 +475,28 @@ void quadTreeTest()
 	box = aabb(3,5,5,7);
 	assert(quadTreeAdd(tree, box, "First Node"));
 	assert(tree->root->childs[NE] == NULL);
-	assert(tree->root->surfaces->items == 1);
-	assert(((QTSurface *)tree->root->surfaces->data[0])->limits.minX == 3);
-	assert(((QTSurface *)tree->root->surfaces->data[0])->limits.maxX == 5);
+	assert(tree->root->objects->len == 1);
+	assert(((QTSurface *)tree->root->objects->data[0])->limits.minX == 3);
+	assert(((QTSurface *)tree->root->objects->data[0])->limits.maxX == 5);
 
 	box = aabb(-5, 2, -3, 4);
 	assert(quadTreeAdd(tree, box, "Second Node"));
 	assert(tree->root->childs[NE] == NULL);
-	assert(tree->root->surfaces->items == 2);
-	assert(((QTSurface *)tree->root->surfaces->data[1])->limits.minX == -5);
-	assert(((QTSurface *)tree->root->surfaces->data[1])->limits.maxX == -3);
-	assert(strcmp(((QTSurface *)tree->root->surfaces->data[1])->data, "Second Node")== 0);
+	assert(tree->root->objects->len == 2);
+	assert(((QTSurface *)tree->root->objects->data[1])->limits.minX == -5);
+	assert(((QTSurface *)tree->root->objects->data[1])->limits.maxX == -3);
+	assert(strcmp(((QTSurface *)tree->root->objects->data[1])->data, "Second Node")== 0);
 
 	// it should split
 	box = aabb(-5, -7, -3, -5);
 	assert(quadTreeAdd(tree, box, "Third Node"));
 
 
-	assert(tree->root->surfaces->items == 0);
-	assert(tree->root->childs[NE]->surfaces->items == 1);
-	assert(tree->root->childs[NW]->surfaces->items == 1);
-	assert(tree->root->childs[SW]->surfaces->items == 1);
-	assert(tree->root->childs[SE]->surfaces->items == 0);
+	assert(tree->root->objects->len == 0);
+	assert(tree->root->childs[NE]->objects->len == 1);
+	assert(tree->root->childs[NW]->objects->len == 1);
+	assert(tree->root->childs[SW]->objects->len == 1);
+	assert(tree->root->childs[SE]->objects->len == 0);
 
 	box = aabb(2, 4, 4, 6);
 	assert(quadTreeAdd(tree, box, "Forth Node"));
@@ -596,28 +509,28 @@ void quadTreeTest()
 	box = aabb(6, 6, 8, 8);
 	assert(quadTreeAdd(tree, box, "Sixth Node"));
 
-	QTSurfaces *res = surfacesNew(); 
+	Array *res = arrayNew(); 
 	AABB queryBox = aabb(0, 0, 10, 10);
 	quadTreeGetIntersections(tree, queryBox, res);
-	assert(res->items == 4);
-	for(i = 0; i < res->items; i++) {
+	assert(res->len == 4);
+	for(i = 0; i < res->len; i++) {
 		s = res->data[i];
 		assert(aabbIntersect(&s->limits, &queryBox));
 	}
 	printf("Result 1:\n");
-	for(i = 0; i < res->items; i++) {
+	for(i = 0; i < res->len; i++) {
 		printSurface(res->data[i]);
 	}
-	quadTreeResetResults(res);
+	arrayReset(res);
 
 
 	queryBox = aabb(5, 5, 10, 10);
 	quadTreeGetIntersections(tree, queryBox, res);
-	for(i = 0; i < res->items; i++) {
+	for(i = 0; i < res->len; i++) {
 		printSurface(res->data[i]);
 	}
-	quadTreeResetResults(res);
-	quadTreeDeleteResults(res);
+	arrayReset(res);
+	arrayDelete(&res);
 
 	//printTree(tree);
 	

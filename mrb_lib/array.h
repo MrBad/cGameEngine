@@ -35,10 +35,17 @@ bool arraySet(Array *arr, int idx, void *element);
 
 void *arrayGet(Array *arr, int idx);
 
+// ads at arbitrary position
+void *arrayGet(Array *arr, int idx);
+
 static inline int arrayLen(Array *arr) { return arr->len; }
 
+int arrayAdd(Array *arr, void *element);
+
+void arrayReset(Array *arr);
+
 #define arrayForeach(array, element, idx) \
-	for(idx = 0; idx < arr->len && ((element = arr->data[idx]) || true); idx++)
+	for(idx = 0; idx < array->len && ((element = array->data[idx]) || true); idx++)
 
 void arrayTest();
 

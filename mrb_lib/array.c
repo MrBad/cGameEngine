@@ -25,16 +25,6 @@ void arrayPush(Array *arr, void *element)
 	arr->data[arr->len++] = element;
 }
 
-void arrayDelete(Array **array)
-{
-	Array *arr = *array;
-	if(arr) {
-		free(arr->data);
-		free(arr);
-		arr = NULL;
-	}
-}
-
 void *arrayPop(Array *arr) 
 {
 	if(arr->len == 0) {
@@ -45,6 +35,35 @@ void *arrayPop(Array *arr)
 	arr->data[arr->len] = NULL;
 	return element;
 }
+// Untested
+int arrayAdd(Array *arr, void *element)
+{
+	if(arr->len == arr->size)
+		if(!arrayGrow(arr))
+			return -1;
+
+	for(int i = 0; i < arr->size; i++) {
+		if(arr->data[i] == NULL) {
+			arr->data[i] = element;
+			arr->len++;
+			return i;
+		}
+	}
+
+	fprintf(stderr, "arrayAdd - probably memory corruption\n");
+	return -1;
+}
+
+void arrayDelete(Array **array)
+{
+	Array *arr = *array;
+	if(arr) {
+		free(arr->data);
+		free(arr);
+		arr = NULL;
+	}
+}
+
 
 void *arrayShift(Array *arr) 
 {
@@ -76,7 +95,7 @@ int arrayCompact(Array *arr)
 		if(!arr->data[i])
 			j++;
 		if(i < j)
-			arr->data[i] = arr->data[j];
+			arr->data[i] = j < arr->len ? arr->data[j] : 0;
 	}
 	int shifted = j - i;
 	arr->len -= shifted;
@@ -122,6 +141,12 @@ void *arrayGet(Array *arr, int idx)
 	if(!arrayValidIndex(arr, idx))
 		return false;
 	return arr->data[idx];
+}
+
+void arrayReset(Array *arr) 
+{
+	memset(arr->data, 0, arr->size*sizeof(*arr->data));
+	arr->len = 0;
 }
 
 Array* arrayNew() 

@@ -2,7 +2,7 @@
 #define QUAD_TREE_H
 
 #include "aabb.h"
-#include "list.h"
+#include "array.h"
 
 
 //
@@ -45,18 +45,12 @@ typedef struct {
 } QTSurface;
 
 
-typedef struct {
-	QTSurface **data;		// ptr to ptr of surfaces
-	int items;				// number of surfaces in array
-	int size;				// size of array in elements
-} QTSurfaces;
-
 // a node
 struct QTNode {
 	struct QTNode *parent;		// parent node to whom it belongs this node
 	struct QTNode *childs[4];	// this node childs 0 - NE, 1 - NW, 2 - SW, 3 - SE
 	AABB limits;				// boundary box this node represents
-	QTSurfaces *surfaces;		// array of pointers containing surfaces in this node
+	Array *objects;			// array of pointers containing surfaces in this node
 };
 
 struct QuadTree {
@@ -76,11 +70,10 @@ void quadTreeDelete(QuadTree *tree);
 QTSurface *quadTreeAdd(QuadTree *tree, AABB limits, void *data);
 //bool quadTreeAddSurface(QuadTree *tree, QTSurface *surface);
 
-QTSurfaces *surfacesNew();
 // query
-bool quadTreeGetIntersections(QuadTree *tree, AABB limits, QTSurfaces *results);
-void quadTreeResetResults(QTSurfaces *results);
-void quadTreeDeleteResults(QTSurfaces *results); 
+bool quadTreeGetIntersections(QuadTree *tree, AABB limits, Array *results);
+void quadTreeResetResults(Array *results);
+void quadTreeDeleteResults(Array *results); 
 
 void quadTreeTest();
 
