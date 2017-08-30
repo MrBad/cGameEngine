@@ -8,9 +8,10 @@ static bool arrayGrow(Array *arr)
 		perror("realloc");
 		return false;
 	}
+
 	memset(
-			arr->data + (arr->size*sizeof(*arr->data)), 0, 
-			(num - arr->size) * sizeof(*arr->data));
+			arr->data + arr->len, 0, 
+			(num - arr->len) * sizeof(*arr->data));
 	
 	arr->size = num;
 	return true;
@@ -123,17 +124,16 @@ void *arrayGet(Array *arr, int idx)
 	return arr->data[idx];
 }
 
-Array* arrayNew(Array **array) 
+Array* arrayNew() 
 {
-	Array *arr = *array;
-	if(arr == NULL) {
-		arr = malloc(sizeof(*arr));
-		if(!arr) {
-			perror("malloc");
-			return NULL;
-		}
+	Array *arr;
+	if(!(arr = malloc(sizeof(*arr)))) {
+		perror("malloc");
+		return NULL;
 	}
-	*array = arr;
+	arr->len = 0;
+	arr->size = 0;
+	arr->data = NULL;
 	return arr;
 }
 
@@ -147,7 +147,7 @@ void arrayTest()
 	printf("Array test\n");
 	Array *arr = NULL;
 
-   	arrayNew(&arr);
+   	arr = arrayNew();
 	arrayPush(arr, "Testing");
 	arrayPush(arr, "This");
 	arrayPush(arr, "Array");
@@ -191,7 +191,7 @@ void arrayTest()
 	}
 
 	arrayDelete(&arr);
-
+	exit(0);
 }
 
 #endif // COMPILE_TESTS

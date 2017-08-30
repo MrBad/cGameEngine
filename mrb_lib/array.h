@@ -17,7 +17,7 @@ struct Array {
 };
 
 
-Array* arrayNew(Array **array);
+Array* arrayNew();
 
 void arrayDelete(Array **array);
 
