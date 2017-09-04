@@ -17,7 +17,7 @@
 //		and check nearest planes... this will be faster than reinserting sprite
 //		into root...
 //		Maybe QTSurface is not a good name - maybe i should call it QTEntity
-//		and QTEntities
+//		and QTEntities - renamed to QTObject
 //		Another optimisation will be to keep a reference between User and Entity
 //		so we can fast update the node
 //		- add an grow function - that will grow the tree up if 
@@ -41,7 +41,8 @@ typedef struct {
 	AABB limits;		// this object bounding box
 	QuadTree *tree;		// ugly, but i need a reference to tree, so i can expand it if i need
 	QTNode *node;		// node where it is insert
-	void *data;			// pointer to whatever aditional info needed
+	void *data;			// pointer to whatever aditional info needed - usually point to user or brick
+	int type;			// type of object pointing
 } QTObject;
 
 
