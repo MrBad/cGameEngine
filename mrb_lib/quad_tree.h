@@ -1,81 +1,114 @@
+/**
+ * A Quad Tree implementation
+ * Docs: https://en.wikipedia.org/wiki/Quadtree
+ * TODO - write more tests. Check for memody leaks
+ */
 #ifndef QUAD_TREE_H
 #define QUAD_TREE_H
 
 #include "aabb.h"
 #include "array.h"
 
-
-//
-//	TODO - add an update node function that will search for old node
-//		and if changed, remove it and reinsert it back with new 
-//		positions - this will help me not rebuild all the tree
-//		every frame and speed up things. Because sprites will not 
-//		change their position too much, it meens they don't need to be moved
-//		far into the tree - so a good algorithm will be to keep track of 
-//		parent nodes and walk up the tree until it fits. 
-//		On reinsert - just go up into the tree from current node
-//		and check nearest planes... this will be faster than reinserting sprite
-//		into root...
-//		Maybe QTSurface is not a good name - maybe i should call it QTEntity
-//		and QTEntities - renamed to QTObject
-//		Another optimisation will be to keep a reference between User and Entity
-//		so we can fast update the node
-//		- add an grow function - that will grow the tree up if 
-//		an new node with bigger limits than root try to be inserted
-//		This way we can have an infinite map...
-//		- write more tests to check for memory leaks / valgrind check
-
+/* Child nodes types */
 enum {
-	NE,	// first quadran
-	NW, // second
-	SW,	// third
-	SE,	// forth
-	QT_NUM_CHILDS
+    NE, // first quadran
+    NW, // second
+    SW, // third
+    SE, // forth
+    QT_NUM_CHILDS
 };
- 
+
+/**
+ * How many objects should we keep in a node before splitting it up
+ */
+#define QT_TREE_MAX_OBJECTS 2
+
 typedef struct QTNode QTNode;
 typedef struct QuadTree QuadTree;
 
-// an object in the node //
+/* An object in the node */
 typedef struct {
-	AABB limits;		// this object bounding box
-	QuadTree *tree;		// ugly, but i need a reference to tree, so i can expand it if i need
-	QTNode *node;		// node where it is insert
-	void *data;			// pointer to whatever aditional info needed - usually point to user or brick
-	int type;			// type of object pointing
+    AABB limits;        // this object bounding box
+    QuadTree *tree;     // a reference to tree, so i can expand it if i need
+    QTNode *node;       // node where it belongs to
+    void *data;         // pointer to user element/object/data
+    int type;           // type of object pointing
 } QTObject;
 
-
-// a node
+/* A node in the tree */
 struct QTNode {
-	struct QTNode *parent;		// parent node to whom it belongs this node
-	struct QTNode *childs[4];	// this node childs 0 - NE, 1 - NW, 2 - SW, 3 - SE
-	AABB limits;				// boundary box this node represents
-	Array *objects;			// array of pointers containing surfaces in this node
+    struct QTNode *parent;      // parent node to whom it belongs this node
+    struct QTNode *childs[4];   // this node childs 0: NE, 1: NW, 2: SW, 3: SE
+    AABB limits;                // boundary box this node represents
+    Array *objects;     // array of pointers containing objects in this node
 };
 
+/* A quad tree */
 struct QuadTree {
-	QTNode *root;
-	int items;
+    QTNode *root;
+    int items;
 };
 
+/**
+ * Updates the position of the object in the tree
+ *
+ * @param obj The QTObject to update
+ * @param newLimits The new AABB position
+ *
+ * @return true on success
+ */
+bool qtObjectUpdate(QTObject *obj, AABB newLimits);
 
-// surface - maybe i will call it Entity //
-
-bool qtObjectUpdate(QTObject *surface, AABB newLimits);
-
+/**
+ * Creates a new quad tree, with the given limits
+ *
+ * @param limits The quad tree limits
+ * @return a reference to this tree
+ */
 QuadTree *quadTreeNew(AABB limits);
-void quadTreeDelete(QuadTree *tree);
-QTObject *quadTreeAdd(QuadTree *tree, AABB limits, void *data);
-//bool quadTreeAddSurface(QuadTree *tree, QTSurface *surface);
 
-// query
+/**
+ * Destroys the tree
+ *
+ * @param tree The tree to destroy
+ */
+void quadTreeDelete(QuadTree *tree);
+
+/**
+ * Adds an element to the tree
+ *
+ * @param tree The tree to add the element to
+ * @param limits The element limits
+ * @param element The element to add (data)
+ */
+QTObject *quadTreeAdd(QuadTree *tree, AABB limits, void *element);
+
+/**
+ * Query the tree for the objects that intersects this limits
+ * and put them into results Array
+ *
+ * @param tree Tree to query
+ * @param limits AABB square to query for
+ * @param results Array where to store results
+ */
 bool quadTreeGetIntersections(QuadTree *tree, AABB limits, Array *results);
+
+/**
+ * Resets the results array (keeps the so far allocated memory, sets items to 0)
+ *
+ * @param results The array to reset
+ */
 void quadTreeResetResults(Array *results);
+
+/**
+ * Deletes the results array
+ */
 void quadTreeDeleteResults(Array *results); 
 
+/**
+ * Do some tests
+ */
 void quadTreeTest();
 
+#endif // QUAD_TREE_H
 
-
-#endif
