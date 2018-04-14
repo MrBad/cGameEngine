@@ -12,14 +12,12 @@
 #include "user.h"
 #include "level.h"
 
-
 typedef enum {
 	GAME_PLAYING,
 	GAME_OVER,
 } GameStates;
 
-
-typedef struct {
+typedef struct Game {
 	Window *win;
 	GLProgram *prog;
 	Camera *cam;
@@ -42,20 +40,16 @@ typedef struct {
 	unsigned long totalFrames;
 } Game;
 
-
 Game *gameNew();
 bool gameInit(Game *game, int winWidth, int winHeight, const char *title);
 void gameLoop(Game *game);
 void gameDelete(Game *game);
 
-
 // defined in user.c
-extern void initZombies(Game *game);
-extern void initHumans(Game *game);
-extern void initPlayer(Game *game);
-extern void humansUpdate(Game *game);
-extern void zombiesUpdate(Game *game);
+extern void usersInit(Game *game);
+extern void usersUpdate(Game *game);
 // defined in collision.c
 extern void checkAllCollisions(Game *game);
 
 #endif
+

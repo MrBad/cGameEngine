@@ -8,7 +8,7 @@ typedef struct {
 } Position;
 
 typedef struct {
-	GLubyte r,g,b,a;
+	GLubyte r, g, b, a;
 } Color;
 
 typedef struct {
@@ -25,7 +25,10 @@ int vertexSetPos(Vertex *v, float x, float y);
 int vertexSetColor(Vertex *v, float r, float g, float b, float a);
 int vertexSetUV(Vertex *vert, float u, float v);
 
-static inline Color color(float r, float g, float b, float a) {
-	return (Color){r, g, b, a};
+static inline Color color(float r, float g, float b, float a)
+{
+	return (Color) { r, g, b, a };
 }
+
 #endif
+

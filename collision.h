@@ -6,15 +6,16 @@
 #include "mrb_lib/vec2f.h"
 
 typedef enum {
-	COLLIDE_NONE,
-	COLLIDE_TOP,
-	COLLIDE_BOTTOM,
-	COLLIDE_LEFT,
-	COLLIDE_RIGHT,
+    COLLIDE_NONE,
+    COLLIDE_TOP,
+    COLLIDE_BOTTOM,
+    COLLIDE_LEFT,
+    COLLIDE_RIGHT,
 } CollisionType;
-
 
 bool isColliding(Rect *a, Rect *b);
 Vec2f collisionCheck(Rect *a, Rect *b);
 Vec2f getDistance(Rect *a, Rect *b);
+
 #endif
+

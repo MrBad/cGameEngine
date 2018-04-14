@@ -1,13 +1,13 @@
-DFLAGS=-DDO_TESTS
+DFLAGS=-DCOMPILE_TESTS
 INCLUDE=.
 LIBS=-lSDL2 -lGL -lGLEW -lm mrb_lib/mrb_lib.a
 CC=gcc
 OFLAGS=-c
-CFLAGS=-g -Wall -Wextra -std=c99 -pedantic -I$(INCLUDE) $(DFLAGS)
+CFLAGS=-g3 -Wall -Wextra -std=c99 -pedantic -I$(INCLUDE) $(DFLAGS)
 MAKE=make
 
 TARGET=cgame
-OBJECTS= main.o game.o level.o user.o collision.o
+OBJECTS=main.o game.o level.o user.o collision.o
 
 all: $(TARGET)
 
@@ -26,3 +26,4 @@ run: $(TARGET) *.o *.c *.h
 clean:
 	rm $(OBJECTS) $(TARGET)
 	$(MAKE) -C mrb_lib clean
+

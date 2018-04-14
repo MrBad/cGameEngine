@@ -7,39 +7,43 @@
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
 
-
-#ifdef DO_TESTS
+#ifdef COMPILE_TESTS
 void doTests()
 {
-	arrayTest();
-	aabbTest();
-	listTest();
-	quadTreeTest();
+    arrayTest();
+    aabbTest();
+    listTest();
+    quadTreeTest();
+    printf("\n");
 }
-#endif
+#endif // COMPILE_TESTS_TESTS
 
 int main()
 {
 
-#ifdef DO_TESTS	
-	doTests();
-#endif // DO_TESTS
+#ifdef COMPILE_TESTS
+    doTests();
+#endif
 
-	Game *game = gameNew();
-	if(!game) 
-		return 1;
+    Game *game;
 
-	if(!gameInit(game, WINDOW_WIDTH, WINDOW_HEIGHT, "A game test")) 
-		return 1;
+    if (!(game = gameNew()))
+        return 1;
 
-	fprintf(stdout, "The planet earth is invaded by zombies. They infect everyone with their contagious plague\n");
-	fprintf(stdout, "There are zombies marked with red dot, humans multicolored and you - blue dot\n");	
-	fprintf(stdout, "You need to resurect zombies, by touching them\n");
-	fprintf(stdout, "Use WSAD to move, QE to zoom\n\n");	
+    if (!gameInit(game, WINDOW_WIDTH, WINDOW_HEIGHT, "A game test"))
+        return 1;
 
-	gameLoop(game);
+    fprintf(stdout, "The planet earth is invaded by zombies. "
+        "They infect everyone with their contagious plague\n");
+    fprintf(stdout, "There are zombies marked with red dot, "
+        "humans multicolored and you - blue dot\n");
+    fprintf(stdout, "You need to resurect zombies, by touching them\n");
+    fprintf(stdout, "Use WSAD to move, QE to zoom\n\n");
 
-	gameDelete(game);
+    gameLoop(game);
 
+    gameDelete(game);
+
+    return 0;
 }
 

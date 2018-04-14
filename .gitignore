@@ -1,4 +1,7 @@
 cgame
+.gdb_history
+.gdbinit
+tags
 # Prerequisites
 *.d
 
