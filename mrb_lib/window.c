@@ -45,7 +45,7 @@ Window *windowNew(const char *title, int width, int height, int flags)
     windowSetClearColor(0, 0, 0.3, 1);
 
     // 1 for vsync, 0 for immediate update, -1 for late swap tearing
-    SDL_GL_SetSwapInterval(1);
+    SDL_GL_SetSwapInterval(0);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -85,6 +85,5 @@ void windowDelete(Window *window)
     SDL_DestroyWindow(window->sdlWindow);
     SDL_Quit();
     free(window);
-    window = NULL;
 }
 

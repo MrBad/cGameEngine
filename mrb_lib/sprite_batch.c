@@ -66,6 +66,8 @@ void sbInit(SpriteBatch *sb)
 
 void sbDelete(SpriteBatch *sb)
 {
+    if (!sb)
+        return;
     if (sb->renderBatches)
         free(sb->renderBatches);
     if (sb->vertices)
@@ -196,9 +198,10 @@ void sbBuildBatches(SpriteBatch *sb)
 {
     GLuint lastTextureId = 0;
     int numBatch = 0, i, j;
-
-    lastTextureId = 0;
-
+    
+    if (!sb)
+        return;
+    
     sbSort(sb);
 
     int needSize = sb->spritesLen * 6;
@@ -266,6 +269,9 @@ void sbDrawBatches(SpriteBatch *sb)
 {
     int i;
     GLint textureLocation;
+    
+    if (!sb)
+        return;
 
     glBindVertexArray(sb->vao); // bind vertex array
     glBindBuffer(GL_ARRAY_BUFFER, sb->vbo);
