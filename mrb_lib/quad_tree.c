@@ -419,10 +419,9 @@ static bool quadTreeExpand(QuadTree *tree, AABB newLimits)
     }
 
     tree->root = newRoot;
-    // if newLimits still does not fit in the doubled ones
-    // recurse
+    // if newLimits still does not fit in the doubled ones, recurse
     if (!aabbFitsIn(newLimits, doubleLimits)) {
-        quadTreeExpand(tree, newLimits); // recurse
+        quadTreeExpand(tree, newLimits);
     }
 
     return true;

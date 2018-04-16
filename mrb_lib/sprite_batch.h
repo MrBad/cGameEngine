@@ -34,6 +34,12 @@ typedef struct {
     GLProgram *prog;
 } SpriteBatch;
 
+/**
+ * Creates a new sprite batch
+ *
+ * @param program GLProgram to use
+ * @return a new SpriteBatch or NULL on error
+ */
 SpriteBatch *sbNew(GLProgram *program);
 void sbInit(SpriteBatch *sb); //
 int sbAddSprite(SpriteBatch *sb, Sprite *sp);

@@ -11,11 +11,30 @@ typedef struct {
 } GLProgram;
 
 GLProgram* glProgramNew();
-void glProgramCompileShaders(GLProgram *program, const char *path);
+
+/**
+ * Compiles the opengl shaders
+ *
+ * @param program The program to compile into
+ * @param path The path to shaders (without extension)
+ * @return true on success, false on error
+ */
+bool glProgramCompileShaders(GLProgram *program, const char *path);
+
+/**
+ * Link the shaders
+ *
+ * @param program The program to link
+ * @return true on success, false on error
+ */
+bool glProgramLinkShaders(GLProgram *program);
+
 void glProgramAddAttribute(GLProgram *program, const char *name);
-void glProgramLinkShaders(GLProgram *program);
+
 void glProgramUse(GLProgram *program);
+
 void glProgramUnuse(GLProgram *program);
+
 void glProgramDelete(GLProgram *program);
 
 #endif

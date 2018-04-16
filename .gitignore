@@ -2,6 +2,7 @@ cgame
 .gdb_history
 .gdbinit
 tags
+core
 # Prerequisites
 *.d
 

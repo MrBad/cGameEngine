@@ -32,7 +32,7 @@ typedef struct {
     QuadTree *tree;     // a reference to tree, so i can expand it if i need
     QTNode *node;       // node where it belongs to
     void *data;         // pointer to user element/object/data
-    int type;           // type of object pointing
+    int type;           // type of object pointing to
 } QTObject;
 
 /* A node in the tree */
@@ -83,13 +83,15 @@ void quadTreeDelete(QuadTree *tree);
  */
 QTObject *quadTreeAdd(QuadTree *tree, AABB limits, void *element);
 
+// TODO quadTreeDel tree, QTObject, based on nodeDelete.
+
 /**
  * Query the tree for the objects that intersects this limits
  * and put them into results Array
  *
  * @param tree Tree to query
  * @param limits AABB square to query for
- * @param results Array where to store results
+ * @param results Array of QTObject where to store results
  */
 bool quadTreeGetIntersections(QuadTree *tree, AABB limits, Array *results);
 

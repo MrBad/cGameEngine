@@ -8,10 +8,18 @@
 #include "file_get.h"
 #include "gl_program.h"
 
+/**
+ * Compiles the shaders
+ *
+ * @param fullPath The path to shader
+ * @param shaderId the handle of the shader obj whose source is to be replaced
+ * @return true on success, false on error
+ */
 static bool compileShader(const char *fullPath, GLuint shaderID) 
 {
     unsigned char *buff = NULL;
     int size;
+
     buff = file_get(fullPath, &size);
     if (size < 0) {
         fprintf(stderr, "Cannot open: %s\n", fullPath);
@@ -24,7 +32,7 @@ static bool compileShader(const char *fullPath, GLuint shaderID)
     // error handling //
     GLint success = 0;
     glGetShaderiv(shaderID, GL_COMPILE_STATUS, &success);
-    if(success == GL_FALSE) {
+    if (success == GL_FALSE) {
         GLint maxLength = 0;
         glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &maxLength);
         char *errorLog = calloc(1, maxLength + 1);
@@ -40,10 +48,16 @@ static bool compileShader(const char *fullPath, GLuint shaderID)
     return true;
 }
 
+/**
+ * Creates a new program
+ *
+ * @return the new allocated GLProgram on success, NULL on error
+ */
 GLProgram* glProgramNew() 
 {
-    GLProgram* program;
-    if(!(program = calloc(1, sizeof(GLProgram)))) {
+    GLProgram *program;
+
+    if (!(program = calloc(1, sizeof(*program)))) {
         fprintf(stderr, "Out of memory: GLProgram\n");
         return NULL;
     }
@@ -51,12 +65,12 @@ GLProgram* glProgramNew()
     program->programID = glCreateProgram();
     program->vertexShaderID = glCreateShader(GL_VERTEX_SHADER);
 
-    if(!program->vertexShaderID) {
+    if (!program->vertexShaderID) {
         fprintf(stderr, "Cannot create vertexShaderID\n");
         return NULL;
     }
     program->fragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
-    if(!program->fragmentShaderID) {
+    if (!program->fragmentShaderID) {
         fprintf(stderr, "Cannot create fragmentShaderID\n");
         return NULL;
     }
@@ -64,6 +78,11 @@ GLProgram* glProgramNew()
     return program;
 }	
 
+/**
+ * Destroys a program
+ *
+ * @param program The program to destroy
+ */
 void glProgramDelete(GLProgram *program)
 {
     if (!program) {
@@ -78,22 +97,28 @@ void glProgramDelete(GLProgram *program)
     program = NULL;
 }
 
-void glProgramCompileShaders(GLProgram *program, const char *path) 
+bool glProgramCompileShaders(GLProgram *program, const char *path) 
 {
     char *fullPath = calloc(1, strlen(path) + 4);
     strcat(fullPath, path);
     strcat(fullPath, ".vs");
-    compileShader(fullPath, program->vertexShaderID);
-
+    if (!compileShader(fullPath, program->vertexShaderID)) {
+        free(fullPath);
+        return false;
+    }
     fullPath[0] = 0;
     strcat(fullPath, path);
     strcat(fullPath, ".fs");
-    compileShader(fullPath, program->fragmentShaderID);
-
+    if (!compileShader(fullPath, program->fragmentShaderID)) {
+        free(fullPath);
+        return false;
+    }
     free(fullPath);
+
+    return true;
 }
 
-void glProgramLinkShaders(GLProgram *program) 
+bool glProgramLinkShaders(GLProgram *program) 
 {
     glAttachShader(program->programID, program->vertexShaderID);
     glAttachShader(program->programID, program->fragmentShaderID);
@@ -111,15 +136,22 @@ void glProgramLinkShaders(GLProgram *program)
         glDeleteProgram(program->programID);
         fprintf(stderr, "Cannot link program %s\n", errorLog);
         free(errorLog);
-        exit(1);
+        return false;
     }
 
     glDetachShader(program->programID, program->vertexShaderID);
     glDetachShader(program->programID, program->fragmentShaderID);
     glDeleteShader(program->vertexShaderID);
     glDeleteShader(program->fragmentShaderID);
+
+    return true;
 }
 
+/**
+ * Use the glprogram
+ *
+ * @param program The program to use
+ */
 void glProgramUse(GLProgram *program) 
 {
     glUseProgram(program->programID);
@@ -127,6 +159,11 @@ void glProgramUse(GLProgram *program)
         glEnableVertexAttribArray(i);
 }
 
+/**
+ * Unuse the gl program
+ *
+ * @param progrom The program to release
+ */
 void glProgramUnuse(GLProgram *program) 
 {
     glUseProgram(0);
@@ -134,7 +171,12 @@ void glProgramUnuse(GLProgram *program)
         glEnableVertexAttribArray(0);
 }
 
-
+/**
+ * Adds an attribute name to the program
+ *
+ * @param program The program to add attribute to
+ * @param attributeName The name of the attribute
+ */
 void glProgramAddAttribute(GLProgram *program, const char *attributeName) 
 {
     printf("Adding attrib: %d %s\n", program->numAttributes, attributeName);

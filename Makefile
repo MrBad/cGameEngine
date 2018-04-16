@@ -7,7 +7,7 @@ CFLAGS=-g3 -Wall -Wextra -std=c99 -pedantic -I$(INCLUDE) $(DFLAGS)
 MAKE=make
 
 TARGET=cgame
-OBJECTS=main.o game.o level.o user.o collision.o
+OBJECTS=main.o game.o
 
 all: $(TARGET)
 

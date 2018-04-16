@@ -17,7 +17,7 @@ typedef struct {
 
 static inline Vec2f vec2f(float x, float y) 
 {
-    return (Vec2f) {x, y};
+    return (Vec2f) { x, y };
 }
 
 static inline float vec2fLength(Vec2f vec) 
@@ -42,7 +42,7 @@ static inline Vec2f vec2fNormalize(Vec2f vec)
     if (len > 0)
         return (Vec2f) { vec.x / len, vec.y / len };
 
-    return (Vec2f) {0.0f, 0.0f};
+    return (Vec2f) { 0.0f, 0.0f };
 }
 
 static inline Vec2f vec2fRotate(Vec2f vec, float angleDegrees) 

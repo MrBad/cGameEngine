@@ -9,36 +9,34 @@
 #include "mrb_lib/inmgr.h"
 #include "mrb_lib/sprite_batch.h"
 #include "mrb_lib/list.h"
-#include "user.h"
-#include "level.h"
 
 typedef enum {
 	GAME_PLAYING,
 	GAME_OVER,
 } GameStates;
 
-typedef struct Game {
+typedef struct Game Game;
+typedef int (*onGameInitFn) (Game *game);
+typedef int (*onGameUpdateFn) (Game *game, int ticks);
+typedef void (*onGameDeleteFn) (Game *game);
+
+struct Game {
 	Window *win;
 	GLProgram *prog;
 	Camera *cam;
 	InMgr *inmgr;
-
-	SpriteBatch *usersBatch;
 	GameStates state;
-
-	float camSpeed;
 	float scaleSpeed;
 
-	Level *level;
-	User *player;
-	List *zombies;
-	List *humans;
-	List *users;	// ptr to a list of all users, used in collide
+//    QuadTree *qtree;
+	SpriteBatch *sBatch;
 
-	QuadTree *bricksTree;
-	QuadTree *usersTree;
+    onGameInitFn onGameInit; 
+    onGameUpdateFn onGameUpdate; 
+    onGameDeleteFn onGameDelete; 
 	unsigned long totalFrames;
-} Game;
+	void *usr;
+};
 
 Game *gameNew();
 bool gameInit(Game *game, int winWidth, int winHeight, const char *title);

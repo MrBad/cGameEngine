@@ -4,11 +4,13 @@
 #include <time.h>
 #include <math.h>
 #include "game.h"
-#include "level.h"
-#include "collision.h"
+#include "mrb_lib/timer.h"
 
 #define SIZE(a) sizeof(a)/sizeof(*a)
 
+/**
+ * Creates a new game
+ */
 Game *gameNew() 
 {
     Game *game;
@@ -18,31 +20,31 @@ Game *gameNew()
         return NULL;
     }
 
-    game->win = NULL;
-    game->prog = NULL;
-    game->cam = NULL;
-    game->inmgr = NULL;
-    game->level = NULL;
-    game->usersBatch = NULL;
-    game->totalFrames = 0;
-
     return game;
 }
 
+/**
+ * Compile and link the shaders
+ */
 static bool gameInitShaders(Game *game) 
 {
-    glProgramCompileShaders(game->prog, "shaders/color_shader");
+    if (!glProgramCompileShaders(game->prog, "shaders/sprite_shader"))
+        return false;
     glProgramAddAttribute(game->prog, "vertexPosition");
     glProgramAddAttribute(game->prog, "vertexColor");
-    glProgramLinkShaders(game->prog);
+    if (!glProgramLinkShaders(game->prog))
+        return false;
 
     return true;
 }
 
+/**
+ * Initialize the game
+ */
 bool gameInit(Game *game, int winWidth, int winHeight, const char *title) 
 {
-    AABB mapLimits;
     game->state = GAME_PLAYING;
+    srand(time(NULL));
 
     if (!(game->win = windowNew(title, winWidth, winHeight, 0))) {
         fprintf(stderr, "Cannot init window\n");
@@ -56,56 +58,36 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
         fprintf(stderr, "Cannot init Camera\n");
         return false;
     }
-    srand(time(NULL));
-
     if (!(game->prog = glProgramNew())) {
         fprintf(stderr, "Cannot init glProgram\n");
         return false;
     }
-    gameInitShaders(game);
-
-    if (!(game->level = levelNew("resources/level1.txt"))) {
-        fprintf(stderr, "Cannot create level\n");
+    if (!gameInitShaders(game)) {
+        fprintf(stderr, "Cannot init shaders\n");
         return false;
     }
-    if (!(loadLevel(game->level, game->prog))) {
-        fprintf(stderr, "Cannot create level\n");
-        return false;
-    }
-    // init map sprite batch //
-    sbInit(game->level->mapBatch);
+    game->cam->scale = 0.2;
+    game->scaleSpeed = 1.001f;
+    cameraSetPosition(game->cam, 0, 0);
 
-    //game->camSpeed = 5.0f;
-    game->scaleSpeed = 1.03f;
+    game->sBatch = sbNew(game->prog);
+    sbInit(game->sBatch);
 
-    // create new user batch //
-    game->usersBatch = sbNew(game->prog);
-    sbInit(game->usersBatch);
+    if (game->onGameInit)
+        if (game->onGameInit(game) < 0)
+            return -1;
 
-    mapLimits = aabb(
-            0, 0, game->level->maxWidth, game->level->maxHeight);
-
-    // do we really need 2 trees?
-    // how about one tree and check the intersection with type ?
-    game->bricksTree = quadTreeNew(mapLimits);
-    game->usersTree = quadTreeNew(mapLimits);
-
-    usersInit(game);
-
-    // this tree will not be updated - static bricks
-    for (int i = 0; i < game->level->mapBatch->spritesLen; i++) {
-        Sprite *s = game->level->mapBatch->sprites[i];
-        AABB bBox = aabb(s->x, s->y, s->x+s->width, s->y+s->height);
-        quadTreeAdd(game->bricksTree, bBox, s);
-    }
-
-    cameraSetPosition(game->cam, game->player->pos.x, game->player->pos.y);
+    gameLoop(game);
+    gameDelete(game);
 
     return true;
 }
 
 void gameDelete(Game *game) 
 {
+    if (game->onGameDelete)
+        game->onGameDelete(game);
+
     if (game->prog) {
         glProgramDelete(game->prog);
         game->prog = NULL;
@@ -118,42 +100,33 @@ void gameDelete(Game *game)
         cameraDelete(game->cam);
         game->cam = NULL;
     }
-
-    quadTreeDelete(game->bricksTree);
-    quadTreeDelete(game->usersTree);
-
-    ListNode *node; User *user;
-    listForEach(game->users, node, user) {
-        spriteDelete(user->sprite);
-        userDelete(user);
-    }
-    listDelete(game->users);
-    listDelete(game->humans);
-    listDelete(game->zombies);
-
-    sbDelete(game->usersBatch);
-    levelDelete(game->level);
-
+    sbDelete(game->sBatch);
     windowDelete(game->win);
     free(game);
 }
 
+void printFPS(uint32_t ticks)
+{
+    static int fpsTicks = 0;
+    static int fpsNumFrames = 0;
+
+    fpsTicks += ticks;
+    fpsNumFrames++;
+    if (fpsTicks >= 1000) {
+        fpsTicks = 0;
+        printf("FPS: %d\n", fpsNumFrames);
+        fpsNumFrames = 0;
+    }
+}
+
 void gameLoop(Game *game) 
 {
-    Uint32 currTicks, prevTicks;
-    int numFrames = 0;
-
-    prevTicks = currTicks = SDL_GetTicks();
+    Timer *timer = timerNew(SDL_GetTicks());
 
     while (game->state == GAME_PLAYING) {
-
-        currTicks = SDL_GetTicks();
-        if(currTicks - prevTicks > 1000) {
-            prevTicks = currTicks;
-            printf("FPS: %d\n", numFrames);
-            numFrames = 0;
-        }
-        numFrames++;
+        /* Compute the timer */
+        uint32_t diffTicks = timerUpdate(timer, SDL_GetTicks());
+        printFPS(diffTicks);
         game->totalFrames++;
 
         inMgrUpdate(game->inmgr);
@@ -161,13 +134,11 @@ void gameLoop(Game *game)
             game->state = GAME_OVER;
         }
 
-        usersUpdate(game);
+        game->onGameUpdate(game, diffTicks);
 
-        checkAllCollisions(game);
         cameraUpdate(game->cam);
 
         windowClear();
-
         glProgramUse(game->prog);
         glActiveTexture(GL_TEXTURE0);
 
@@ -177,18 +148,15 @@ void gameLoop(Game *game)
                 pLocation, 1, GL_FALSE,
                 &(game->cam->cameraMatrix.m[0][0]));
 
-        // build vertices for map //
-        sbBuildBatches(game->level->mapBatch);
-        sbDrawBatches(game->level->mapBatch);
-
-        // build vertices for users //
-        sbBuildBatches(game->usersBatch);
-        sbDrawBatches(game->usersBatch);
+        // build vertices //
+        sbBuildBatches(game->sBatch);
+        sbDrawBatches(game->sBatch);
 
         glProgramUnuse(game->prog);
         windowUpdate(game->win);
     }
     //
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    timerDelete(timer);
 }
 
