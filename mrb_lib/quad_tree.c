@@ -1,15 +1,11 @@
-#include "quad_tree.h"
-#include "aabb.h"
-#include "vec2f.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include <string.h>
-
-// Maximum number of objects in a node 
-// before splitting node //
-#define QT_TREE_MAX_OBJECTS 2
+#include "vec2f.h"
+#include "aabb.h"
+#include "quad_tree.h"
 
 static bool quadTreeExpand(QuadTree *tree, AABB newLimits);
 
@@ -47,6 +43,23 @@ QTObject *objectNew(AABB limits, void *data)
 void objectDelete(QTObject *obj) 
 {
     free(obj);
+}
+
+/**
+ * Removes an object from it's array
+ */
+static inline bool removeObj(Array *objs, void *obj)
+{
+    int idx = arrayIndexOf(objs, obj);
+    assert(idx >= 0);
+    assert(idx < objs->len);
+    arrayUnset(objs, idx);
+    int ilen = objs->len;
+    int num = arrayCompact(objs);
+    assert(num == 1);
+    assert(objs->len == ilen - num);
+
+    return true;
 }
 
 /**
@@ -193,15 +206,13 @@ static bool nodeAdd(QTNode *node, QTObject *obj)
                 continue;
             else {
                 if (nodeAdd(node->childs[idx], oldObj)) {
-                    arrayUnset(node->objects, i);
-                    //node->objects->data[i] = NULL;
+                    removeObj(node->objects, oldObj);
                 }
             }
         }
-        arrayCompact(node->objects); // because we nulled some items
     }
 
-    // add original node into one of the childs
+    // add original object into one of the childs
     idx = nodeGetIndex(node, obj);
     if (idx == -1) {
         arrayPush(node->objects, obj);
@@ -265,10 +276,16 @@ bool qtObjectUpdate(QTObject *obj, AABB newLimits)
     oldNode = obj->node;
     assert(obj);
 
-    // if we still fits in this node bounds, do not move
-    // just update the limits
+    // if we still fits in this node bounds, check if we can fit a child.
+    // This will keep the tree balanced, when an object traverse 2 nodes.
     if (aabbFitsIn(newLimits, oldNode->limits)) {
         obj->limits = newLimits;
+        if (oldNode->childs[0]) {
+            if ((i = nodeGetIndex(oldNode, obj) >= 0)) {
+                removeObj(oldNode->objects, obj);
+                return nodeAdd(obj->tree->root, obj);
+            }
+        }
         return true;
     }
     found = false;
@@ -287,14 +304,7 @@ bool qtObjectUpdate(QTObject *obj, AABB newLimits)
         curr = obj->tree->root;
         printf("Expaded ROOT\n");
     }
-
-    i = arrayIndexOf(oldNode->objects, obj);
-    if (i < 0) {
-        fprintf(stderr, "qtObjectUpdate: cannot find the object\n");
-        exit(1);
-    }
-    arrayUnset(oldNode->objects, i);
-    arrayCompact(oldNode->objects);
+    removeObj(oldNode->objects, obj);
     obj->limits = newLimits;
 
     // insert into newNode //
@@ -349,7 +359,9 @@ static bool quadTreeExpand(QuadTree *tree, AABB newLimits)
     AABB doubleLimits;
     AABB oldLimits = tree->root->limits;
     // find the direction where we should grow //
-    Vec2f dist = vec2f(newLimits.minX - oldLimits.minX, newLimits.minY - oldLimits.minY);
+    Vec2f dist = vec2f(
+            newLimits.minX - oldLimits.minX,
+            newLimits.minY - oldLimits.minY);
     Vec2f dir = vec2fNormalize(dist);
 
     float width = oldLimits.maxX - oldLimits.minX;
@@ -487,6 +499,19 @@ static bool nodeGetIntersections(QTNode *node, AABB limits, Array *result)
     return true;
 }
 
+int quadTreeMaxDepth(QTNode *node)
+{
+    int max = 0;
+    if (node->childs[0]) {
+        for (int i = 0; i < 4; i++) {
+            int m = quadTreeMaxDepth(node->childs[i]);
+            if (m > max)
+                max = m;
+        }
+    }
+    return 1 + max;
+}
+
 bool quadTreeGetIntersections(QuadTree *tree, AABB limits, Array *result) 
 {
     return nodeGetIntersections(tree->root, limits, result);
@@ -509,7 +534,7 @@ static void printNode(QTNode *node)
             node->limits.maxX, node->limits.maxY);
 }
 
-static void printNodes(QTNode *node, int depth) 
+void printNodes(QTNode *node, int depth)
 {
     int i;
 

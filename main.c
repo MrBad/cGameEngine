@@ -9,6 +9,9 @@
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
+#define NUM_BALLS 200
+#define BRIKSZ 64.0f
+const uint16_t mapWidth = 40, mapHeight = 30;
 
 #ifdef COMPILE_TESTS
 void doTests()
@@ -35,6 +38,7 @@ int main()
 
     Game *game;
 
+    printf("Use WASD keys to move camera, QE to zoom\n");
     if (!(game = gameNew()))
         return 1;
 
@@ -47,10 +51,6 @@ int main()
 
     return 0;
 }
-
-#define NUM_BALLS 200
-#define BRIKSZ 64.0f
-const uint16_t mapWidth = 30, mapHeight = 30;
 
 enum { TYPE_STATIC, TYPE_DYNAMIC } objType;
 
@@ -131,7 +131,7 @@ int onGameInit(Game *game)
         }
     }
 
-    cameraSetPosition(game->cam, BRIKSZ*mapWidth/2, BRIKSZ*mapHeight/2);
+    cameraSetPosition(game->cam, mapWidth * BRIKSZ / 2, mapHeight * BRIKSZ / 2);
 
     // init the balls //
     for (i = 0; i < NUM_BALLS; i++) {
@@ -154,6 +154,12 @@ int onGameInit(Game *game)
         sbAddSprite(game->sBatch, ball->obj.sprite);
         arrayPush(balls.objs, ball);
     }
+    // init "player" - a squared sprite test independent of the screen,
+    // to test camera coordinates and scale //
+    DynGObj *p = calloc(1, sizeof(*p));
+    p->obj.sprite = spriteNew(0, 0, 10, 10, balls.textures[GLASS]->id);
+    balls.player = p;
+    sbAddSprite(game->sBatch, p->obj.sprite);
 
     // add all objects to quad tree //
     GObj *ent;
@@ -220,7 +226,7 @@ void ballBrickCollision(DynGObj *ball, GObj *brick)
     Rect *b = (Rect *) brick;   // by casting an aligned structure
     Vec2f newPos = ball->obj.pos;
     Vec2f distance = getDistance(a, b);
-    float minLen = ball->obj.dim.x / 2 + brick->dim.x / 2;
+    //float minLen = ball->obj.dim.x / 2 + brick->dim.x / 2;
 
     /* Does the ball really hit the brick? */
     if (!isColliding(a, b))
@@ -273,9 +279,9 @@ void ballBallCollision(DynGObj *a, DynGObj *b)
      * v1New = v1(r1^3 - r2^3) / (r1^3 + r2^3)
      */
     float r1 = a->obj.dim.x / 2;
-    float r1cb = r1 * r1 * r1;
+    //float r1cb = r1 * r1 * r1;
     float r2 = b->obj.dim.x / 2;
-    float r2cb = r2 * r2 * r2;
+    //float r2cb = r2 * r2 * r2;
 
     Vec2f v1New = vec2fMulS(a->velocity, r1 - r2);
     v1New = vec2fAdd(v1New, vec2fMulS(vec2fMulS(b->velocity, 2), r2));
@@ -338,12 +344,10 @@ int onGameUpdate(Game *game, int ticks)
     (void) game;
     int i;
     static int nTicks = 0;
+    Array *res = arrayNew();
 
     nTicks += ticks;
-    if (nTicks >= 1000) {
-        //printf("One second passed %d\n", nTicks);
-        nTicks = 0;
-    }
+
     // update objects //
     DynGObj *ent;
     arrayForEach(balls.objs, ent, i) {
@@ -354,7 +358,6 @@ int onGameUpdate(Game *game, int ticks)
 
         gobjSetPos((GObj *)ent, newPos);
     }
-    Array *res = arrayNew();
     // check collisions //
     arrayForEach(balls.objs, ent, i) {
         if (ent->obj.type != TYPE_DYNAMIC)
@@ -375,8 +378,31 @@ int onGameUpdate(Game *game, int ticks)
         }
         arrayReset(res);
     }
+    updateCamera(game, ticks);
+    /* Let's play with a sprite and camera coordinates */
+    AABB caabb = cameraGetAABB(game->cam);
+    quadTreeGetIntersections(balls.qtree, caabb, res);
+    Sprite *sp = balls.player->obj.sprite;
+    static bool rcol = true;
+    if (nTicks >= 200) {
+        nTicks = 0;
+        rcol = !rcol;
+    }
+    Color col;
+    if (rcol)
+        col = color(255, 0, 0, 180);
+    else
+        col = color(0, 255, 0, 180);
+    spriteSetColor(sp, &col);
+    balls.player->obj.dim.x = (rcol ? 8 : 12) / game->cam->scale;
+    balls.player->obj.dim.y = (rcol ? 8 : 12) / game->cam->scale;
+    spriteSetPos(sp, caabb.maxX - sp->width - 4 , caabb.maxY - sp->height - 4);
+    spriteSetDimensions(sp, balls.player->obj.dim.x, balls.player->obj.dim.y);
+    arrayReset(res);
+
     arrayDelete(&res);
 #if 0
+    // old way to test collision
     int j;
     for (i = 0; i < balls.objs->len; i++) {
         for (j = 0; j < balls.objs->len; j++) {
@@ -386,7 +412,7 @@ int onGameUpdate(Game *game, int ticks)
         }
     }
 #endif
-    updateCamera(game, ticks);
+
     return 0;
 }
 
@@ -410,6 +436,7 @@ void onGameDelete(Game *game)
             spriteDelete(ent->obj.sprite);
         free(ent);
     }
+    free(balls.player);
     quadTreeDelete(balls.qtree);
     printf("gameDeleted\n");
 }

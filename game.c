@@ -66,7 +66,7 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
         fprintf(stderr, "Cannot init shaders\n");
         return false;
     }
-    game->cam->scale = 0.2;
+    game->cam->scale = 0.3f;
     game->scaleSpeed = 1.001f;
     cameraSetPosition(game->cam, 0, 0);
 

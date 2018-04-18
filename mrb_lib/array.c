@@ -183,7 +183,7 @@ void arrayReset(Array *arr)
 Array *arrayNew()
 {
     Array *arr;
-    if (!(arr = malloc(sizeof(*arr)))) {
+    if (!(arr = calloc(1, sizeof(*arr)))) {
         perror("malloc");
         return NULL;
     }
@@ -247,6 +247,19 @@ void arrayTest()
     }
 
     arrayDelete(&arr);
+
+    arr = arrayNew();
+    char *strs[] = {"Testing", "Another", "Thing", "Compact"};
+    for (i = 0; i < 4; i++)
+        arrayPush(arr, strs[i]);
+    assert(arr->len == 4);
+    arrayUnset(arr, 0);
+    arrayUnset(arr, 1);
+    arrayUnset(arr, 2);
+    arrayUnset(arr, 3);
+    assert(arr->len == 4);
+    arrayCompact(arr);
+    assert(arr->len == 0);
 }
 
 #endif // COMPILE_TESTS

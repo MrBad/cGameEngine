@@ -10,6 +10,8 @@ void printAABB(AABB limits)
 
 bool aabbIntersects(AABB *a, AABB *b)
 {
+    assert(a);
+    assert(b);
     assert(a->minX < a->maxX);
     assert(a->minY < a->maxY);
     assert(b->minX < b->maxX);

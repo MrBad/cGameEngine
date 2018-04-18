@@ -17,9 +17,19 @@ typedef struct {
     bool needsUpdate;
 } Camera;
 
-
+/**
+ * Creates a new camera object.
+ */
 Camera *cameraNew(int screenWidth, int screenHeight);
+
+/**
+ * Sets camera world position (center point)
+ */
 void cameraSetPosition(Camera *camera, float x, float y);
+
+/**
+ * Sets the camera scale
+ */
 void cameraSetScale(Camera *camera, float newScale);
 
 /**
@@ -33,6 +43,10 @@ AABB cameraGetAABB(Camera *camera);
  * @param camera The camera
  */
 void cameraUpdate(Camera *camera);
+
+/**
+ * Destroys the camera
+ */
 void cameraDelete(Camera *camera);
 
 #endif

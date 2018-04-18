@@ -1,4 +1,4 @@
-DFLAGS=-DCOMPILE_TESTS
+#DFLAGS=-DCOMPILE_TESTS
 INCLUDE=.
 LIBS=-lSDL2 -lGL -lGLEW -lm mrb_lib/mrb_lib.a
 CC=gcc

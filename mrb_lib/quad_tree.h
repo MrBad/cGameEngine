@@ -107,6 +107,7 @@ void quadTreeResetResults(Array *results);
  */
 void quadTreeDeleteResults(Array *results); 
 
+int quadTreemaxDepth(QTNode *node);
 /**
  * Do some tests
  */

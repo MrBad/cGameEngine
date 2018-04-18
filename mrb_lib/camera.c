@@ -39,8 +39,8 @@ void cameraUpdate(Camera *camera)
     };
 
     Vec3f scaleVec = { camera->scale, camera->scale, 0.0f };
-
-    camera->cameraMatrix = mat4fMul(camera->orthoMatrix, mat4fTranslate(translateVec));
+    Mat4f trans = mat4fTranslate(translateVec);
+    camera->cameraMatrix = mat4fMul(camera->orthoMatrix, trans);
     camera->cameraMatrix = mat4fMul(mat4fScale(scaleVec), camera->cameraMatrix);
     camera->needsUpdate = false;
 #if 0
@@ -53,6 +53,8 @@ void cameraUpdate(Camera *camera)
 
 void cameraSetPosition(Camera *camera, float x, float y) 
 {
+    if (x == camera->position.x && y == camera->position.y)
+        return;
     camera->position.x = x;
     camera->position.y = y;
     camera->needsUpdate = true;
@@ -67,10 +69,10 @@ void cameraSetScale(Camera *camera, float scale)
 AABB cameraGetAABB(Camera *cam)
 {
     return (AABB) {
-        (cam->position.x - cam->screenWidth / 2) / cam->scale,
-            (cam->position.y - cam->screenHeight / 2) / cam->scale,
-            (cam->position.x + cam->screenWidth / 2) / cam->scale,
-            (cam->position.y + cam->screenHeight / 2) / cam->scale,
+            (cam->position.x - cam->screenWidth / 2 / cam->scale),
+            (cam->position.y - cam->screenHeight / 2 / cam->scale),
+            (cam->position.x + cam->screenWidth / 2 / cam->scale),
+            (cam->position.y + cam->screenHeight / 2 / cam->scale),
     };
 }
 
