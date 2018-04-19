@@ -30,10 +30,13 @@ struct Game {
 
 //    QuadTree *qtree;
 	SpriteBatch *sBatch;
+	SpriteBatch *fontBatch;
 
     onGameInitFn onGameInit; 
     onGameUpdateFn onGameUpdate; 
     onGameDeleteFn onGameDelete; 
+
+    int fps;
 	unsigned long totalFrames;
 	void *usr;
 };

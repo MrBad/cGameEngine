@@ -69,7 +69,7 @@ typedef struct {
 
 #define ARR_LEN(a) (sizeof(a)/sizeof(a[0]))
 
-enum { CIRCLE, RBRICK, LBRICK, GLASS, NUM_TEXTURES } texture_types;
+enum { CIRCLE, RBRICK, LBRICK, GLASS, FONT, NUM_TEXTURES } texture_types;
 
 /* timeout queue stuff - WIP */
 typedef int (*CallBack) (void *context);
@@ -84,6 +84,7 @@ struct BallsGame {
     Texture *textures[NUM_TEXTURES];
     DynGObj *player;
     QuadTree *qtree;
+    Array *glyphs;
     Array *tmoQueue;    // Time out queue
 } balls;
 
@@ -104,6 +105,7 @@ int onGameInit(Game *game)
     balls.textures[CIRCLE] = loadTexture("resources/circle.png");
     balls.textures[LBRICK] = loadTexture("resources/light_bricks.png");
     balls.textures[GLASS] = loadTexture("resources/glass.png");
+    balls.textures[FONT] = loadTexture("resources/bfont.png");
     balls.objs = arrayNew();
     balls.qtree = quadTreeNew(aabb(-64, -64, 64*23, 64*21));
 
@@ -154,13 +156,8 @@ int onGameInit(Game *game)
         sbAddSprite(game->sBatch, ball->obj.sprite);
         arrayPush(balls.objs, ball);
     }
-    // init "player" - a squared sprite test independent of the screen,
-    // to test camera coordinates and scale //
-    DynGObj *p = calloc(1, sizeof(*p));
-    p->obj.sprite = spriteNew(0, 0, 10, 10, balls.textures[GLASS]->id);
-    balls.player = p;
-    sbAddSprite(game->sBatch, p->obj.sprite);
 
+    balls.glyphs = arrayNew();
     // add all objects to quad tree //
     GObj *ent;
     arrayForEach(balls.objs, ent, i) {
@@ -207,8 +204,15 @@ void gobjSetPos(GObj *obj, Vec2f newPos)
         obj->sprite->y = newPos.y;
     }
 }
-// bounding check fast collision check
-bool isColliding(Rect *a, Rect *b)
+
+/**
+ * Check if 2 rectangles collides
+ *
+ * @param a First rectangle
+ * @param b Second rectangle
+ * @return false if the rectangles does not intersect
+ */
+static bool isColliding(Rect *a, Rect *b)
 {
     return (!(
                 (a->x >= b->x + b->width) ||
@@ -217,6 +221,7 @@ bool isColliding(Rect *a, Rect *b)
                 (a->y+a->height <= b->y)
     ));
 }
+
 /**
  * Handle ball-brick collision
  */
@@ -378,41 +383,45 @@ int onGameUpdate(Game *game, int ticks)
         }
         arrayReset(res);
     }
+    arrayDelete(&res);
     updateCamera(game, ticks);
+
     /* Let's play with a sprite and camera coordinates */
     AABB caabb = cameraGetAABB(game->cam);
-    quadTreeGetIntersections(balls.qtree, caabb, res);
-    Sprite *sp = balls.player->obj.sprite;
-    static bool rcol = true;
-    if (nTicks >= 200) {
-        nTicks = 0;
-        rcol = !rcol;
-    }
-    Color col;
-    if (rcol)
-        col = color(255, 0, 0, 180);
-    else
-        col = color(0, 255, 0, 180);
-    spriteSetColor(sp, &col);
-    balls.player->obj.dim.x = (rcol ? 8 : 12) / game->cam->scale;
-    balls.player->obj.dim.y = (rcol ? 8 : 12) / game->cam->scale;
-    spriteSetPos(sp, caabb.maxX - sp->width - 4 , caabb.maxY - sp->height - 4);
-    spriteSetDimensions(sp, balls.player->obj.dim.x, balls.player->obj.dim.y);
-    arrayReset(res);
+    /* clean previous frame glyphs */
+    Sprite *sp;
+    arrayForEach(balls.glyphs, sp, i)
+        spriteDelete(sp);
+    arrayReset(balls.glyphs);
+    sbResetSprites(game->fontBatch);
 
-    arrayDelete(&res);
-#if 0
-    // old way to test collision
-    int j;
-    for (i = 0; i < balls.objs->len; i++) {
-        for (j = 0; j < balls.objs->len; j++) {
-            DynGObj *a = balls.objs->data[i];
-            DynGObj *b = balls.objs->data[j];
-            checkCollision(a, b);
-        }
-    }
-#endif
+    int fontSize = 24;
+    int spX = 16;
+    int spY = 16;
+    float uvW = 1.0 / spX;
+    float uvH = 1.0 / spX;
+    char str[64];
+    int strLen = 0;
+    if (game->fps)
+        strLen = snprintf(str, sizeof(str),
+                "FPS: %d. This is a simple text test", game->fps);
 
+    for (i = 0; i < strLen; i++) {
+        sp = spriteNew(0, 0, 32, 32, balls.textures[FONT]->id);
+        arrayPush(balls.glyphs, sp);
+        sbAddSprite(game->fontBatch, sp);
+        Color col = color(0, 255, 0, 200);
+        spriteSetColor(sp, &col);
+        char letter = str[i];
+        int idx = letter % spX,
+            idy = spY - 1 - (letter / spX);
+        AABB uv = aabb(idx * uvW, idy * uvH, (idx + 1) * uvW, (idy + 1) * uvH);
+        spriteSetUV(sp, uv);
+        spriteSetDimensions(sp, fontSize / game->cam->scale,
+                fontSize / game->cam->scale);
+        spriteSetPos(sp, caabb.minX + ((sp->width * 0.5) * (i)),
+                caabb.maxY - sp->height);
+    }
     return 0;
 }
 
@@ -436,7 +445,7 @@ void onGameDelete(Game *game)
             spriteDelete(ent->obj.sprite);
         free(ent);
     }
-    free(balls.player);
+    arrayDelete(&balls.glyphs);
     quadTreeDelete(balls.qtree);
     printf("gameDeleted\n");
 }

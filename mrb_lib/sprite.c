@@ -19,6 +19,9 @@ Sprite *spriteNew(float x, float y, float width, float height, GLuint textureID)
     spriteSetColor(sp, &c);
     sp->dirty = true;
 
+    AABB uv = aabb(0, 0, 1, 1);
+    spriteSetUV(sp, uv);
+
     return sp;
 }
 
@@ -54,7 +57,22 @@ void spriteSetTextureID(Sprite *sp, GLuint textureID)
     sp->dirty = true;
 }
 
+bool spriteSetUV(Sprite *sp, AABB uv)
+{
+    if (uv.minX < 0 || uv.minX > 1 || uv.minY < 0 || uv.minY > 1 ||
+        uv.maxX < 0 || uv.maxX > 1 || uv.maxY < 0 || uv.maxY > 1 ||
+        uv.minX > uv.maxX || uv.minY > uv.maxY)
+    {
+        fprintf(stderr, "spriteSetUV AABB uv must have vals from 0.0 to 1.0\n");
+        return false;
+    }
+    sp->uv = uv;
+
+    return true;
+}
+
 void spriteDelete(Sprite *sp) 
 {
     free(sp);
 }
+

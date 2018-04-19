@@ -73,6 +73,9 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
     game->sBatch = sbNew(game->prog);
     sbInit(game->sBatch);
 
+    game->fontBatch = sbNew(game->prog);
+    sbInit(game->fontBatch);
+
     if (game->onGameInit)
         if (game->onGameInit(game) < 0)
             return -1;
@@ -101,11 +104,13 @@ void gameDelete(Game *game)
         game->cam = NULL;
     }
     sbDelete(game->sBatch);
+    sbDelete(game->fontBatch);
+
     windowDelete(game->win);
     free(game);
 }
 
-void printFPS(uint32_t ticks)
+void updateFPS(Game *game, uint32_t ticks)
 {
     static int fpsTicks = 0;
     static int fpsNumFrames = 0;
@@ -114,7 +119,8 @@ void printFPS(uint32_t ticks)
     fpsNumFrames++;
     if (fpsTicks >= 1000) {
         fpsTicks = 0;
-        printf("FPS: %d\n", fpsNumFrames);
+        //printf("FPS: %d\n", fpsNumFrames);
+        game->fps = fpsNumFrames;
         fpsNumFrames = 0;
     }
 }
@@ -126,7 +132,7 @@ void gameLoop(Game *game)
     while (game->state == GAME_PLAYING) {
         /* Compute the timer */
         uint32_t diffTicks = timerUpdate(timer, SDL_GetTicks());
-        printFPS(diffTicks);
+        updateFPS(game, diffTicks);
         game->totalFrames++;
 
         inMgrUpdate(game->inmgr);
@@ -134,11 +140,10 @@ void gameLoop(Game *game)
             game->state = GAME_OVER;
         }
 
-        game->onGameUpdate(game, diffTicks);
-
-        cameraUpdate(game->cam);
 
         windowClear();
+        game->onGameUpdate(game, diffTicks);
+        cameraUpdate(game->cam);
         glProgramUse(game->prog);
         glActiveTexture(GL_TEXTURE0);
 
@@ -151,6 +156,10 @@ void gameLoop(Game *game)
         // build vertices //
         sbBuildBatches(game->sBatch);
         sbDrawBatches(game->sBatch);
+
+        game->fontBatch->needsSort = false;
+        sbBuildBatches(game->fontBatch);
+        sbDrawBatches(game->fontBatch);
 
         glProgramUnuse(game->prog);
         windowUpdate(game->win);

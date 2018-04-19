@@ -1,5 +1,5 @@
-- sprites should be able to set their UV coordinate (sprite animation)
-- add ability to draw strings on screen (using sprites?; cameraGetAABB and
++ sprites should be able to set their UV coordinate (sprite animation)
+~ add ability to draw strings on screen (using sprites?; cameraGetAABB and
     scale, so the text should be independent of zoom or camera position);
 - add camera culling to the draw process; there is no need to draw all sprites
     but only the ones that camera sees (cameraGetAABB)

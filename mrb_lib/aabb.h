@@ -11,8 +11,6 @@ typedef struct {
     float maxY;
 } AABB;
 
-
-
 static inline AABB aabb(float minX, float minY, float maxX, float maxY) 
 {
     assert(minX < maxX);

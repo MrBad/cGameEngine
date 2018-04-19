@@ -44,6 +44,7 @@ SpriteBatch *sbNew(GLProgram *program);
 void sbInit(SpriteBatch *sb); //
 int sbAddSprite(SpriteBatch *sb, Sprite *sp);
 bool sbDeleteSprite(SpriteBatch *sb, Sprite *sp);
+void sbResetSprites(SpriteBatch *sb);
 void sbBuildBatches(SpriteBatch *sb);
 void sbDrawBatches(SpriteBatch *sb);
 void sbDelete(SpriteBatch *sb);

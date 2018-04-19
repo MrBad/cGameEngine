@@ -24,6 +24,7 @@ SpriteBatch *sbNew(GLProgram *prog)
     sb->sprites = NULL;
     sb->spritesSize = 0;
     sb->spritesLen = 0;
+
     sb->needsSort = true;
     sb->vao = sb->vbo = 0;
     sb->prog = prog;
@@ -92,7 +93,7 @@ int sbAddSprite(SpriteBatch *sb, Sprite *sp)
     int i;
     // resize buffer if needed //
     if (sb->spritesLen == sb->spritesSize) {
-        i = sb->spritesSize == 0 ? 2 : sb->spritesSize * 2;
+        i = sb->spritesSize == 0 ? 8 : sb->spritesSize * 2;
         sb->sprites = realloc(sb->sprites, i * sizeof(*sb->sprites));
         if (!sb->sprites) {
             fprintf(stderr, "Cannot realloc sb->sprites\n");
@@ -112,6 +113,12 @@ int sbAddSprite(SpriteBatch *sb, Sprite *sp)
     }
 
     return -1;
+}
+
+void sbResetSprites(SpriteBatch *sb)
+{
+    memset(sb->sprites, 0, sb->spritesSize * sizeof(sb->sprites[0]));
+    sb->spritesLen = 0;
 }
 
 bool sbDeleteSprite(SpriteBatch *sb, Sprite *sp) 
@@ -198,13 +205,14 @@ void sbBuildBatches(SpriteBatch *sb)
 {
     GLuint lastTextureId = 0;
     int numBatch = 0, i, j;
-    
+
     if (!sb)
         return;
-    
+
     sbSort(sb);
 
     int needSize = sb->spritesLen * 6;
+
     if (sb->verticesSize < needSize) {
         sb->vertices = realloc(sb->vertices, needSize * sizeof(Vertex));
         if (!sb->vertices) {
@@ -217,7 +225,7 @@ void sbBuildBatches(SpriteBatch *sb)
 
     for (i = 0; i < sb->spritesLen; i++) {
         if (!sb->sprites[i]->textureID) {
-            printf("invalid sprite at position: %d\n", i);
+            printf("invalid sprite texture at position: %d\n", i);
             continue;
         }
         assert(sb->sprites);
@@ -234,21 +242,23 @@ void sbBuildBatches(SpriteBatch *sb)
 
         assert(sb->renderBatches);
 
+        Vertex *v;
         Sprite *sp = sb->sprites[i];
-        vertexSetPos(sb->vertices + i*6 + 0, sp->x + sp->width, sp->y + sp->height);
-        vertexSetPos(sb->vertices + i*6 + 1, sp->x,             sp->y + sp->height);
-        vertexSetPos(sb->vertices + i*6 + 2, sp->x,             sp->y				);
-        vertexSetPos(sb->vertices + i*6 + 3, sp->x,             sp->y				);
-        vertexSetPos(sb->vertices + i*6 + 4, sp->x + sp->width, sp->y				);
-        vertexSetPos(sb->vertices + i*6 + 5, sp->x + sp->width, sp->y + sp->height);
+        v = sb->vertices + i * 6;
+        vertexSetPos(v++, sp->x + sp->width, sp->y + sp->height);
+        vertexSetPos(v++, sp->x,             sp->y + sp->height);
+        vertexSetPos(v++, sp->x,             sp->y				);
+        vertexSetPos(v++, sp->x,             sp->y				);
+        vertexSetPos(v++, sp->x + sp->width, sp->y				);
+        vertexSetPos(v++, sp->x + sp->width, sp->y + sp->height);
 
-        vertexSetUV(sb->vertices + i*6 + 0, 1, 1);
-        vertexSetUV(sb->vertices + i*6 + 1, 0, 1);
-        vertexSetUV(sb->vertices + i*6 + 2, 0, 0);
-
-        vertexSetUV(sb->vertices + i*6 + 3, 0, 0);
-        vertexSetUV(sb->vertices + i*6 + 4, 1, 0);
-        vertexSetUV(sb->vertices + i*6 + 5, 1, 1);
+        v = sb->vertices + i * 6;
+        vertexSetUV(v++, sp->uv.maxX, sp->uv.maxY);
+        vertexSetUV(v++, sp->uv.minX, sp->uv.maxY);
+        vertexSetUV(v++, sp->uv.minX, sp->uv.minY);
+        vertexSetUV(v++, sp->uv.minX, sp->uv.minY);
+        vertexSetUV(v++, sp->uv.maxX, sp->uv.minY);
+        vertexSetUV(v++, sp->uv.maxX, sp->uv.maxY);
 
         for (j = 0; j < 6; j++) {
             vertexSetColor(
