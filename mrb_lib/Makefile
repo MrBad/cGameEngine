@@ -10,7 +10,7 @@ TARGET=mrb_lib.a
 OBJECTS=camera.o file_get.o gl_program.o inmgr.o mat4f.o \
 		sprite.o sprite_batch.o texture.o vertex.o window.o \
 		array.o aabb.o quad_tree.o list.o \
-		timer.o \
+		timer.o text_renderer.o \
 		upng/upng.o
 
 

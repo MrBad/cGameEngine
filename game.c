@@ -73,8 +73,9 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
     game->sBatch = sbNew(game->prog);
     sbInit(game->sBatch);
 
-    game->fontBatch = sbNew(game->prog);
-    sbInit(game->fontBatch);
+    //game->fontBatch = sbNew(game->prog);
+    //sbInit(game->fontBatch);
+    game->tr = trNew("resources/bfont.png", 16, 16, game->prog);
 
     if (game->onGameInit)
         if (game->onGameInit(game) < 0)
@@ -104,7 +105,9 @@ void gameDelete(Game *game)
         game->cam = NULL;
     }
     sbDelete(game->sBatch);
-    sbDelete(game->fontBatch);
+    //sbDelete(game->fontBatch);
+
+    trDelete(game->tr);
 
     windowDelete(game->win);
     free(game);
@@ -140,9 +143,10 @@ void gameLoop(Game *game)
             game->state = GAME_OVER;
         }
 
-
         windowClear();
+        trSetCamera(game->tr, game->cam);
         game->onGameUpdate(game, diffTicks);
+
         cameraUpdate(game->cam);
         glProgramUse(game->prog);
         glActiveTexture(GL_TEXTURE0);
@@ -157,9 +161,7 @@ void gameLoop(Game *game)
         sbBuildBatches(game->sBatch);
         sbDrawBatches(game->sBatch);
 
-        game->fontBatch->needsSort = false;
-        sbBuildBatches(game->fontBatch);
-        sbDrawBatches(game->fontBatch);
+        trRender(game->tr);
 
         glProgramUnuse(game->prog);
         windowUpdate(game->win);

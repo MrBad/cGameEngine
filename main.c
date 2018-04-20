@@ -6,6 +6,7 @@
 #include "mrb_lib/vec2f.h"
 #include "mrb_lib/texture.h"
 #include "mrb_lib/inmgr.h"
+#include "mrb_lib/text_renderer.h"
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
@@ -59,6 +60,7 @@ typedef struct {
     Vec2f dim;      // Dimension
     Sprite *sprite; // Attached sprite
     QTObject *qtObj; // Reference to QuadTree object
+    SDL_TimerID ctm; // A timer, used in resetting brick color
     uint8_t type;
 } GObj;
 
@@ -222,6 +224,17 @@ static bool isColliding(Rect *a, Rect *b)
     ));
 }
 
+uint32_t resetBrickColor(uint32_t interval, void *p)
+{
+    (void) interval;
+    GObj *brick = p;
+    Color col = color(255, 255, 255, 255);
+    spriteSetColor(brick->sprite, &col);
+    brick->ctm = 0;
+
+    return 0;
+}
+
 /**
  * Handle ball-brick collision
  */
@@ -254,6 +267,9 @@ void ballBrickCollision(DynGObj *ball, GObj *brick)
 
     Color red = color(255, 128, 128, 255);
     spriteSetColor(brick->sprite, &red);
+    if (brick->ctm)
+        SDL_RemoveTimer(brick->ctm);
+    brick->ctm = SDL_AddTimer(500, resetBrickColor, brick);
 }
 
 void ballBallCollision(DynGObj *a, DynGObj *b)
@@ -386,42 +402,15 @@ int onGameUpdate(Game *game, int ticks)
     arrayDelete(&res);
     updateCamera(game, ticks);
 
-    /* Let's play with a sprite and camera coordinates */
-    AABB caabb = cameraGetAABB(game->cam);
-    /* clean previous frame glyphs */
-    Sprite *sp;
-    arrayForEach(balls.glyphs, sp, i)
-        spriteDelete(sp);
-    arrayReset(balls.glyphs);
-    sbResetSprites(game->fontBatch);
-
-    int fontSize = 24;
-    int spX = 16;
-    int spY = 16;
-    float uvW = 1.0 / spX;
-    float uvH = 1.0 / spX;
     char str[64];
-    int strLen = 0;
+    trSetFontSize(game->tr, 24);
+    trSetSpacing(game->tr, 0.5f);
+    trSetColor(game->tr, color(0, 128, 0, 255));
     if (game->fps)
-        strLen = snprintf(str, sizeof(str),
-                "FPS: %d. This is a simple text test", game->fps);
+        snprintf(str, sizeof(str),
+                "FPS: %d", game->fps);
+    trTextAt(game->tr, 0, 0, str);
 
-    for (i = 0; i < strLen; i++) {
-        sp = spriteNew(0, 0, 32, 32, balls.textures[FONT]->id);
-        arrayPush(balls.glyphs, sp);
-        sbAddSprite(game->fontBatch, sp);
-        Color col = color(0, 255, 0, 200);
-        spriteSetColor(sp, &col);
-        char letter = str[i];
-        int idx = letter % spX,
-            idy = spY - 1 - (letter / spX);
-        AABB uv = aabb(idx * uvW, idy * uvH, (idx + 1) * uvW, (idy + 1) * uvH);
-        spriteSetUV(sp, uv);
-        spriteSetDimensions(sp, fontSize / game->cam->scale,
-                fontSize / game->cam->scale);
-        spriteSetPos(sp, caabb.minX + ((sp->width * 0.5) * (i)),
-                caabb.maxY - sp->height);
-    }
     return 0;
 }
 

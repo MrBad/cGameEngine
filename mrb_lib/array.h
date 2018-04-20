@@ -14,7 +14,7 @@ struct Array {
 /**
  * Creates a new array
  * 
- * @return new array
+ * @return new array on succes or NULL on error (no memory)
  */
 Array *arrayNew();
 
@@ -49,9 +49,13 @@ void *arrayPop(Array *arr);
  */
 void *arrayShift(Array *arr);
 
+/**
+ * Pushes an element to the beginning of the array
+ *
+ * @arr The array
+ * @element Element to push
+ */
 void arrayUnshift(Array *arr, void *element);
-
-int arrayCompact(Array *arr);
 
 /**
  * Scans the array for an element
@@ -72,7 +76,19 @@ int arrayIndexOf(Array *arr, void *element);
  */
 bool arraySet(Array *arr, int idx, void *element);
 
+/**
+ * Sets an index to 0 - unset it
+ *
+ * @param arr The array
+ * @param idx The index to unset
+ * @return true on success, false on error (invalid index)
+ */
 bool arrayUnset(Array *arr, int idx);
+
+/**
+ * Compacts the array, by removing unsetted indexes and recomputs it's length
+ */
+int arrayCompact(Array *arr);
 
 /**
  * Gets the element on index idx

@@ -1,6 +1,7 @@
 #ifndef GL_PROGRAM_H
 #define GL_PROGRAM_H
 
+#include <stdbool.h>
 #include <GL/glew.h>
 
 typedef struct {

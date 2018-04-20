@@ -9,6 +9,7 @@
 #include "mrb_lib/inmgr.h"
 #include "mrb_lib/sprite_batch.h"
 #include "mrb_lib/list.h"
+#include "mrb_lib/text_renderer.h"
 
 typedef enum {
 	GAME_PLAYING,
@@ -28,10 +29,9 @@ struct Game {
 	GameStates state;
 	float scaleSpeed;
 
-//    QuadTree *qtree;
 	SpriteBatch *sBatch;
-	SpriteBatch *fontBatch;
 
+    TextRenderer *tr;
     onGameInitFn onGameInit; 
     onGameUpdateFn onGameUpdate; 
     onGameDeleteFn onGameDelete; 

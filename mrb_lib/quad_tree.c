@@ -198,18 +198,24 @@ static bool nodeAdd(QTNode *node, QTObject *obj)
     else if (node->childs[NE] == NULL) {
         // split the node in 4
         nodeSplit(node);
-
+        // XXX - todo - use List, it's much easy to remove objs.
+        Array *rem = arrayNew();
         // move it's objects to childs, if possible
         arrayForEach(node->objects, oldObj, i) {
             idx = nodeGetIndex(node, oldObj);
-            if (idx == -1)
-                continue;
-            else {
+            if (idx >= 0) {
                 if (nodeAdd(node->childs[idx], oldObj)) {
-                    removeObj(node->objects, oldObj);
+                    arrayPush(rem, oldObj);
+                    //removeObj(node->objects, oldObj);
                 }
             }
         }
+        arrayForEach(rem, oldObj, i) {
+            idx = arrayIndexOf(node->objects, oldObj);
+            if (idx < 0) continue;
+            removeObj(node->objects, oldObj);
+        }
+        arrayDelete(&rem);
     }
 
     // add original object into one of the childs
@@ -579,7 +585,7 @@ void quadTreeTest()
     assert(tree);
     assert(tree->items == 0);
 
-    box = aabb(3,5,5,7);
+    box = aabb(3, 5, 5, 7);
     assert(quadTreeAdd(tree, box, "First Node"));
     assert(tree->root->childs[NE] == NULL);
     assert(tree->root->objects->len == 1);
