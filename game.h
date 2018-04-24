@@ -11,6 +11,8 @@
 #include "mrb_lib/list.h"
 #include "mrb_lib/text_renderer.h"
 
+#define ARR_LEN(a) sizeof(a)/sizeof(*a)
+
 typedef enum {
 	GAME_PLAYING,
 	GAME_OVER,
@@ -38,7 +40,7 @@ struct Game {
 
     int fps;
 	unsigned long totalFrames;
-	void *usr;
+	void *priv;
 };
 
 Game *gameNew();

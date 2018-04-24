@@ -9,11 +9,14 @@ Texture *loadTexture(const char *filePath)
     Texture *texture = NULL;
     unsigned char *buff = NULL;
     int size;
-    buff = file_get(filePath, &size);
+    if (!(buff = file_get(filePath, &size))) {
+        fprintf(stderr, "loadTexture: cannot open %s\n", filePath);
+        return NULL;
+    }
 
     upng_t *png = upng_new_from_bytes(buff, size);
     if (!png) {
-        fprintf(stderr, "Cannot convert png\n");
+        fprintf(stderr, "loadTexture: cannot convert the png file\n");
         free(buff);
         upng_free(png);
         return NULL;
@@ -22,7 +25,7 @@ Texture *loadTexture(const char *filePath)
     upng_decode(png);
     if (upng_get_error(png) == UPNG_EOK) {
         if (!(texture = calloc(1, sizeof(Texture)))) {
-            fprintf(stderr, "Cannot alloc texture\n");
+            fprintf(stderr, "loadTexture: cannot alloc texture\n");
             return NULL;
         }
         texture->width = upng_get_width(png);

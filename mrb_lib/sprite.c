@@ -19,6 +19,7 @@ Sprite *spriteNew(float x, float y, float width, float height, GLuint textureID)
     spriteSetColor(sp, &c);
     sp->dirty = true;
 
+    spriteSetNumFrames(sp, 1, 1);
     AABB uv = aabb(0, 0, 1, 1);
     spriteSetUV(sp, uv);
 
@@ -45,6 +46,28 @@ void spriteSetColor(Sprite *sp, Color *color)
     sp->color.g = color->g;
     sp->color.b = color->b;
     sp->color.a = color->a;
+}
+
+void spriteSetNumFrames(Sprite *sp, int numX, int numY)
+{
+    sp->numX = numX;
+    sp->numY = numY;
+}
+
+bool spriteSetFrame(Sprite *sp, int x, int y)
+{
+    if (x > sp->numX)
+        return false;
+    if (y > sp->numY)
+        return false;
+    y = sp->numY - y - 1; // start from top to bottom
+    float fx = 1.0f / sp->numX,
+          fy = 1.0f / sp->numY;
+
+    AABB uv = aabb(x * fx, y * fy, (x + 1) * fx, (y + 1) * fy);
+    spriteSetUV(sp, uv);
+
+    return true;
 }
 
 void spriteSetTextureID(Sprite *sp, GLuint textureID) 

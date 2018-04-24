@@ -14,6 +14,7 @@ typedef struct {
     float width, height;    // Dimensions.
     Color color;            // color to use
     GLuint textureID;       // Texture id to use (see Texture->id)
+    int numX, numY;         // Number of subsprites on x/y
     AABB uv;                // using an AABB for UV, with values from 0 to 1.
     bool dirty;             // do we need to update?
 } Sprite;
@@ -56,6 +57,15 @@ void spriteSetDimensions(Sprite *sp, float width, float height);
  */
 void spriteSetColor(Sprite *sp, Color *color);
 
+/**
+ * Sets number of frames the texture has, on x and y axis
+ */
+void spriteSetNumFrames(Sprite *sp, int numX, int numY);
+
+/**
+ * Sets frame number x,y
+ */
+bool spriteSetFrame(Sprite *sp, int x, int y);
 /**
  * Sets sprite texture id
  */

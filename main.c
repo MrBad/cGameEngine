@@ -1,219 +1,218 @@
 #include "game.h"
-#include "mrb_lib/array.h"
-#include "mrb_lib/aabb.h"
-#include "mrb_lib/list.h"
-#include "mrb_lib/quad_tree.h"
+#include "mrb_lib/strdup.h"
 #include "mrb_lib/vec2f.h"
-#include "mrb_lib/texture.h"
 #include "mrb_lib/inmgr.h"
 #include "mrb_lib/text_renderer.h"
 
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 600
-#define NUM_BALLS 200
-#define BRIKSZ 64.0f
-const uint16_t mapWidth = 40, mapHeight = 30;
-
-#ifdef COMPILE_TESTS
-void doTests()
-{
-    arrayTest();
-    aabbTest();
-    listTest();
-    quadTreeTest();
-    printf("\n");
-}
-#endif // COMPILE_TESTS
-
-/* game callbacks */
 int onGameInit(Game *game);
 int onGameUpdate(Game *game, int ticks);
 void onGameDelete(Game *game);
 
+typedef struct Entity Entity;
+typedef int (*entityUpdateFn) (Game *game, Entity *ent, int ticks);
+int playerUpdate(Game *game, Entity *ent, int ticks);
+
+struct Entity {
+    Vec2f pos;
+    Vec2f dim;
+    Sprite *sprite;
+    int type;
+};
+
+typedef struct {
+    Entity ent;
+    int numSprX, numSprY;
+    Vec2f velocity;
+    float speed;            // normal speed, when it's walking
+    entityUpdateFn update;
+    int ticks;
+} Player;
+
+char *textures[] = {
+    "resources/red_bricks.png",
+    "resources/hero.png",
+    "resources/bfont.png"
+};
+enum { RBRICK, HERO, FONT, NUM_TEXTURES };
+
+#define BRICKSZ 64.0f
+#define PLAYER_NFRAMES_X 6
+#define PLAYER_NFRAMES_Y 4
+
+typedef struct {
+    int mapWidth, mapHeight;
+    char *map;
+    Texture *textures[NUM_TEXTURES];
+    Array *entities;
+    Player *player;
+} UsrGame;
+
 int main()
 {
+    Game *game = gameNew();
+    if (!game)
+        return -1;
 
-#ifdef COMPILE_TESTS
-    doTests();
-#endif
-
-    Game *game;
-
-    printf("Use WASD keys to move camera, QE to zoom\n");
-    if (!(game = gameNew()))
-        return 1;
-
-    game->onGameInit =   onGameInit;
+    game->onGameInit = onGameInit;
     game->onGameUpdate = onGameUpdate;
     game->onGameDelete = onGameDelete;
 
-    if (!gameInit(game, WINDOW_WIDTH, WINDOW_HEIGHT, "Some test"))
-        return 1;
+    if (!gameInit(game, 800, 600, "Sprite Animation"))
+        return -1;
 
     return 0;
 }
 
-enum { TYPE_STATIC, TYPE_DYNAMIC } objType;
-
-typedef struct {
-    Vec2f pos;      // Position of the object
-    Vec2f dim;      // Dimension
-    Sprite *sprite; // Attached sprite
-    QTObject *qtObj; // Reference to QuadTree object
-    SDL_TimerID ctm; // A timer, used in resetting brick color
-    uint8_t type;
-} GObj;
-
-typedef struct {
-    GObj obj;
-    Vec2f velocity;
-} DynGObj;
-
-#define ARR_LEN(a) (sizeof(a)/sizeof(a[0]))
-
-enum { CIRCLE, RBRICK, LBRICK, GLASS, FONT, NUM_TEXTURES } texture_types;
-
-/* timeout queue stuff - WIP */
-typedef int (*CallBack) (void *context);
-typedef struct TimeOut {
-    CallBack fn;
-    void *context;
-} TimeOutObj;
-
-/* A structure to avoid globals */
-struct BallsGame {
-    Array *objs;
-    Texture *textures[NUM_TEXTURES];
-    DynGObj *player;
-    QuadTree *qtree;
-    Array *glyphs;
-    Array *tmoQueue;    // Time out queue
-} balls;
-
-static float frand(float min, float max)
-{
-    float u = (float) rand() / (float) RAND_MAX;
-    return min + u * (max - min);
-}
-/**
- * Called by the game engine, on start
- *
- * @param game The passed game
- * @return 0 on success, -1 on error
- */
 int onGameInit(Game *game)
 {
-    balls.textures[RBRICK] = loadTexture("resources/red_bricks.png");
-    balls.textures[CIRCLE] = loadTexture("resources/circle.png");
-    balls.textures[LBRICK] = loadTexture("resources/light_bricks.png");
-    balls.textures[GLASS] = loadTexture("resources/glass.png");
-    balls.textures[FONT] = loadTexture("resources/bfont.png");
-    balls.objs = arrayNew();
-    balls.qtree = quadTreeNew(aabb(-64, -64, 64*23, 64*21));
+    int i, x, y;
+    UsrGame *usrGame;
+    Player *player;
+    if (!(usrGame = calloc(1, sizeof(*usrGame))))
+        return -1;
 
-    // construct the map //
-    uint16_t i, j;
-    for (i = 0; i < mapHeight; i++) {
-        for (j = 0; j < mapWidth; j++) {
-            if (i == 0 || i == mapHeight - 1 || j == 0 || j == mapWidth - 1) {
-                GObj *brick = calloc(1, sizeof(*brick));
-                if (!brick)
-                    exit(1);
-                float x = j * BRIKSZ,
-                    y = i * BRIKSZ;
-                brick->type = TYPE_STATIC;
-                brick->pos = vec2f(x, y);
-                brick->dim = vec2f(BRIKSZ, BRIKSZ);
+    game->priv = usrGame;
+    usrGame->map = strdup(
+      "######################\n"
+      "#                    #\n"
+      "#                    #\n"
+      "#           #        #\n"
+      "#    @ #    #        #\n"
+      "#       #   #        #\n"
+      "#        #            #\n"
+      "#                    #\n"
+      "######################\n"
+    );
+
+    usrGame->entities = arrayNew();
+
+    for (i = 0; i < NUM_TEXTURES; i++)
+        if (!(usrGame->textures[i] = loadTexture(textures[i])))
+            return -1;
+
+    int mapLen = strlen(usrGame->map) - 1;
+    Entity *brick;
+    Color col;
+
+    for (i = 0, x = 0, y = 0; i < mapLen; i++) {
+        switch (usrGame->map[i]) {
+            case '\n':
+                x = 0;
+                y++;
+                continue;
+            case '#':
+                brick = calloc(1, sizeof(*brick));
+                brick->pos = vec2f(x * BRICKSZ, y * BRICKSZ);
+                brick->dim = vec2f(BRICKSZ, BRICKSZ);
                 brick->sprite = spriteNew(
-                        x, y, BRIKSZ, BRIKSZ,
-                        balls.textures[RBRICK]->id);
-                Color col = color(255, 255, 255, 255);
+                       brick->pos.x, brick->pos.y, BRICKSZ, BRICKSZ,
+                       usrGame->textures[RBRICK]->id
+                );
+                col = color(255, 255, 255, 255);
                 spriteSetColor(brick->sprite, &col);
                 sbAddSprite(game->sBatch, brick->sprite);
-                arrayPush(balls.objs, brick);
-            }
+                arrayPush(usrGame->entities, brick);
+                break;
+            case '@':
+                player = calloc(1, sizeof(*player));
+                player->update = playerUpdate;
+                player->speed = 0.3;
+                player->ent.pos = vec2f(x * BRICKSZ, y * BRICKSZ);
+                player->ent.dim = vec2f(
+                        usrGame->textures[HERO]->width / PLAYER_NFRAMES_X,
+                        usrGame->textures[HERO]->height / PLAYER_NFRAMES_Y
+                );
+                player->ent.sprite = spriteNew(
+                       player->ent.pos.x, player->ent.pos.y,
+                       player->ent.dim.x, player->ent.dim.y,
+                       usrGame->textures[HERO]->id
+                );
+                col = color(255, 255, 255, 255);
+                spriteSetColor(player->ent.sprite, &col);
+                spriteSetNumFrames(
+                        player->ent.sprite,
+                        PLAYER_NFRAMES_X, PLAYER_NFRAMES_Y
+                );
+                spriteSetFrame(player->ent.sprite, 1, 1);
+                sbAddSprite(game->sBatch, player->ent.sprite);
+                arrayPush(usrGame->entities, player);
+                usrGame->player = player;
+                break;
+            case ' ':
+                break;
+            default:
+                printf("Uknown map type element at %d, %d\n", x, y);
+                break;
         }
+        x++;
     }
-
-    cameraSetPosition(game->cam, mapWidth * BRIKSZ / 2, mapHeight * BRIKSZ / 2);
-
-    // init the balls //
-    for (i = 0; i < NUM_BALLS; i++) {
-        DynGObj *ball = calloc(1, sizeof(*ball));
-        ball->obj.type = TYPE_DYNAMIC;
-        ball->obj.pos = vec2f(
-                frand(BRIKSZ, (float)(mapWidth - 2) * BRIKSZ),
-                frand(BRIKSZ, (float)(mapHeight - 2) * BRIKSZ));
-        float radius = frand(16, 46);
-        ball->obj.dim = vec2f(radius, radius);
-        float speed = frand(0.2, 0.4);
-        Vec2f direction = vec2f(frand(-1, 1), frand(-1, 1));
-        ball->velocity = vec2fMulS(direction, speed);
-        ball->obj.sprite = spriteNew(
-                ball->obj.pos.x, ball->obj.pos.y, 
-                ball->obj.dim.x, ball->obj.dim.y,
-                balls.textures[CIRCLE]->id);
-        Color col = color(rand() % 255, rand() % 255, rand() % 255, 180);
-        spriteSetColor(ball->obj.sprite, &col);
-        sbAddSprite(game->sBatch, ball->obj.sprite);
-        arrayPush(balls.objs, ball);
-    }
-
-    balls.glyphs = arrayNew();
-    // add all objects to quad tree //
-    GObj *ent;
-    arrayForEach(balls.objs, ent, i) {
-        AABB box = aabb(
-                ent->pos.x, ent->pos.y,
-                ent->pos.x + ent->dim.x, ent->pos.y + ent->dim.y);
-        ent->qtObj = quadTreeAdd(balls.qtree, box, ent);
-    }
+    usrGame->mapWidth = x;
+    usrGame->mapHeight = y;
 
     return 0;
 }
 
-/**
- * Gets the distance between centerpoints of two rectangles
- *
- * @param a First rectangle
- * @param b Second rectangle
- * @return distVect The distance vector between their centers
- */
-Vec2f getDistance(Rect *a, Rect *b)
+int playerUpdate(Game *game, Entity *ent, int ticks)
 {
-    Vec2f centerA = {a->x + a->width / 2, a->y + a->height / 2};
-    Vec2f centerB = {b->x + b->width / 2, b->y + b->height / 2};
-    Vec2f distVec = vec2fSub(centerB, centerA);
+    Player *player = (Player *) ent;
+    InMgr *mgr = game->inmgr;
+    Camera *cam = game->cam;
+    Vec2f velocity = player->velocity;
+    static int frameX = 0;
 
-    return distVec;
-}
+    player->velocity = vec2f(0, 0);
+    if (inMgrIsKeyPressed(mgr, IM_KEY_W))
+        player->velocity.y = 1;
+    else if (inMgrIsKeyPressed(mgr, IM_KEY_S))
+        player->velocity.y = -1;
+    else if (inMgrIsKeyPressed(mgr, IM_KEY_A))
+        player->velocity.x = -1;
+    else if (inMgrIsKeyPressed(mgr, IM_KEY_D))
+        player->velocity.x = 1;
+    else
+        player->velocity = vec2f(0, 0);
 
-/**
- * Sets the Game object position
- */
-void gobjSetPos(GObj *obj, Vec2f newPos)
-{
-    obj->pos = newPos;
-    AABB box = aabb(
-            obj->pos.x,  obj->pos.y, 
-            obj->pos.x + obj->dim.x, 
-            obj->pos.y + obj->dim.y);
+    if (inMgrIsKeyPressed(mgr, IM_KEY_Q))
+        cameraSetScale(cam, cam->scale * game->scaleSpeed);
+    if (inMgrIsKeyPressed(mgr, IM_KEY_E))
+        cameraSetScale(cam, cam->scale / game->scaleSpeed);
 
-    qtObjectUpdate(obj->qtObj, box);
+    Vec2f pos = vec2fMulS(player->velocity, ticks * player->speed);
+    pos = vec2fAdd(player->ent.pos, pos);
+    player->ent.pos = pos;
+    spriteSetPos(player->ent.sprite, pos.x, pos.y);
 
-    if (obj->sprite) {
-        obj->sprite->x = newPos.x;
-        obj->sprite->y = newPos.y;
+    enum {P_STOP, P_WALK};
+    enum {F_DOWN, F_LEFT, F_UP, F_RIGHT};
+    int pState = P_WALK, pFace = 0;
+
+        if (player->velocity.x < 0)
+            pFace = F_LEFT;
+        else if (player->velocity.x > 0)
+            pFace = F_RIGHT;
+        else if (player->velocity.y < 0)
+            pFace = F_DOWN;
+        else if (player->velocity.y > 0)
+            pFace = F_UP;
+        else
+            pState = P_STOP;
+
+        if (pState == P_STOP)
+            frameX = 0;
+        else
+            frameX = (frameX + 1) % 5;
+    bool changedDirection =
+        velocity.x != player->velocity.x
+        || velocity.y != player->velocity.y;
+    player->ticks+=ticks;
+    if (player->ticks > 80 || changedDirection) {
+        spriteSetFrame(player->ent.sprite, 1 + frameX, pFace);
+        player->ticks = 0;
     }
+    
+    return 0;
 }
 
-/**
- * Check if 2 rectangles collides
- *
- * @param a First rectangle
- * @param b Second rectangle
- * @return false if the rectangles does not intersect
- */
 static bool isColliding(Rect *a, Rect *b)
 {
     return (!(
@@ -224,218 +223,90 @@ static bool isColliding(Rect *a, Rect *b)
     ));
 }
 
-uint32_t resetBrickColor(uint32_t interval, void *p)
+static Vec2f getDistance(Rect *a, Rect *b)
 {
-    (void) interval;
-    GObj *brick = p;
-    Color col = color(255, 255, 255, 255);
-    spriteSetColor(brick->sprite, &col);
-    brick->ctm = 0;
+    Vec2f centerA = { a->x + a->width / 2, a->y + a->height / 2 };
+    Vec2f centerB = { b->x + b->width / 2, b->y + b->height / 2 };
+    Vec2f distVec = vec2fSub(centerB, centerA);
+
+    return distVec;
+}
+
+int checkCollisions(Game *game)
+{
+    int i;
+    UsrGame *usrGame = game->priv;
+    Player *player = usrGame->player;
+    Entity *ent;
+
+    arrayForEach(usrGame->entities, ent, i) {
+        if ((Entity *) player == ent)
+            continue;
+        if (isColliding((Rect *) player, (Rect *) ent)) {
+            Vec2f distVec = getDistance((Rect *) ent, (Rect *) player);
+            if (fabs(distVec.x) > fabs(distVec.y)) {
+                if (distVec.x < 0)
+                    player->ent.pos.x = ent->pos.x - player->ent.dim.x;
+                else
+                    player->ent.pos.x = ent->pos.x + ent->dim.x;
+            } else {
+                if (distVec.y < 0)
+                    player->ent.pos.y = ent->pos.y - player->ent.dim.y;
+                else
+                    player->ent.pos.y = ent->pos.y + ent->dim.y;
+            }
+            spriteSetPos(
+                    player->ent.sprite, 
+                    player->ent.pos.x, player->ent.pos.y
+            );
+        }
+    }
 
     return 0;
 }
 
-/**
- * Handle ball-brick collision
- */
-void ballBrickCollision(DynGObj *ball, GObj *brick)
+void printFPS(Game *game)
 {
-    Rect *a = (Rect *) ball;    // C polymorphic thing
-    Rect *b = (Rect *) brick;   // by casting an aligned structure
-    Vec2f newPos = ball->obj.pos;
-    Vec2f distance = getDistance(a, b);
-    //float minLen = ball->obj.dim.x / 2 + brick->dim.x / 2;
-
-    /* Does the ball really hit the brick? */
-    if (!isColliding(a, b))
-        return;
-
-    if (fabs(distance.x) > fabs(distance.y)) {
-        if (distance.x < 0)             // left collision
-            newPos.x = b->x + b->width;
-        else if (distance.x > 0)        // right collision
-            newPos.x = b->x - a->width;
-        ball->velocity.x *= -1;
-    } else {
-        if (distance.y < 0)             // bottom collision
-            newPos.y = b->y + b->height;
-        else if (distance.y > 0)        // top collision
-            newPos.y = b->y - a->height;
-        ball->velocity.y *= -1;
-    }
-    gobjSetPos((GObj *)ball, newPos);
-
-    Color red = color(255, 128, 128, 255);
-    spriteSetColor(brick->sprite, &red);
-    if (brick->ctm)
-        SDL_RemoveTimer(brick->ctm);
-    brick->ctm = SDL_AddTimer(500, resetBrickColor, brick);
-}
-
-void ballBallCollision(DynGObj *a, DynGObj *b)
-{
-    Vec2f distVec = vec2fSub(a->obj.pos, b->obj.pos);
-    float distance = vec2fLength(distVec);
-    float minDist = a->obj.dim.x / 2 + b->obj.dim.x / 2;
-
-    /* Does the balls really collide? */
-    if (distance > minDist)
-        return;
-    // step back //
-    float depth = minDist - distance;
-    Vec2f colDeptVec = vec2fMulS(vec2fNormalize(distVec), depth);
-    colDeptVec = vec2fDivS(colDeptVec, 2.0f);
-    gobjSetPos((GObj *)a, vec2fAdd(a->obj.pos, colDeptVec));
-    gobjSetPos((GObj *)b, vec2fSub(b->obj.pos, colDeptVec));
-
-    /**
-     * Change directions and speeds
-     * Let's say density of all balls equals 1
-     * mass = volume / density => mass == volume
-     * sphere volume = 4*PI*r^3/3
-     * v1New = (v1(vol1 - vol2) + 2vol2v2) / (vol1 + vol2)
-     * v1New = (v1(4*PI*r1^3/3 - 4*PI*r2^3/3) + 2*v2*4*PI*r2^3/3) 
-     *          / (4*PI*r1^3/3 + 4*PI*r2^3/3)
-     * v1New = (4*PI/3 * v1( r1^3 - r2^3) + 2v2r2^3) / 4*PI/3(r1^3 + r2^3)
-     * v1New = v1(r1^3 - r2^3) / (r1^3 + r2^3)
-     */
-    float r1 = a->obj.dim.x / 2;
-    //float r1cb = r1 * r1 * r1;
-    float r2 = b->obj.dim.x / 2;
-    //float r2cb = r2 * r2 * r2;
-
-    Vec2f v1New = vec2fMulS(a->velocity, r1 - r2);
-    v1New = vec2fAdd(v1New, vec2fMulS(vec2fMulS(b->velocity, 2), r2));
-    v1New = vec2fDivS(v1New, (r1 + r2));
-
-    Vec2f v2New = vec2fMulS(b->velocity, r2 - r1);
-    v2New = vec2fAdd(v2New, vec2fMulS(vec2fMulS(a->velocity, 2), r1));
-    v2New = vec2fDivS(v2New, (r1 + r2));
-    a->velocity = v1New;
-    b->velocity = v2New;
-}
-
-/**
- * Checks if 2 objects collide and call the specialized function
- */
-void checkCollision(DynGObj *a, DynGObj *b)
-{
-    if (a->obj.type == TYPE_DYNAMIC && b->obj.type == TYPE_STATIC)
-        ballBrickCollision(a, (GObj *) b);
-    else if (a->obj.type == TYPE_STATIC && b->obj.type == TYPE_DYNAMIC)
-        ballBrickCollision(b, (GObj*) a);
-    else if (a->obj.type == TYPE_DYNAMIC && b->obj.type == TYPE_DYNAMIC)
-        ballBallCollision(a, b);
-}
-
-void updateCamera(Game *game, int ticks)
-{
-    InMgr *mgr = game->inmgr;
-    Camera *cam = game->cam;
-    Vec2f velocity = vec2f(0, 0);
-    Vec2f pos;
-
-    if (inMgrIsKeyPressed(mgr, IM_KEY_W))
-        velocity.y = 1;
-    if (inMgrIsKeyPressed(mgr, IM_KEY_S))
-        velocity.y = -1;
-    if (inMgrIsKeyPressed(mgr, IM_KEY_A))
-        velocity.x = -1;
-    if (inMgrIsKeyPressed(mgr, IM_KEY_D))
-        velocity.x = 1;
-    if (inMgrIsKeyPressed(mgr, IM_KEY_Q))
-        cameraSetScale(cam, cam->scale * game->scaleSpeed);
-    if (inMgrIsKeyPressed(mgr, IM_KEY_E))
-        cameraSetScale(cam, cam->scale / game->scaleSpeed);
-
-    pos = vec2fMulS(velocity, (float)ticks);
-    pos = vec2fAdd(vec2f(cam->position.x, cam->position.y), pos);
-    cameraSetPosition(cam, pos.x, pos.y);
-}
-
-/**
- * Called when game updates, on each frame
- *
- * @param game The game structure passed in
- * @param ticks How many ms passed since last call
- * @return 0 on success, -1 on error
- */
-int onGameUpdate(Game *game, int ticks)
-{
-    (void) game;
-    int i;
-    static int nTicks = 0;
-    Array *res = arrayNew();
-
-    nTicks += ticks;
-
-    // update objects //
-    DynGObj *ent;
-    arrayForEach(balls.objs, ent, i) {
-        if (ent->obj.type != TYPE_DYNAMIC)
-            continue;
-        Vec2f newPos = vec2fMulS(ent->velocity, (float)ticks);
-        newPos = vec2fAdd(ent->obj.pos, newPos);
-
-        gobjSetPos((GObj *)ent, newPos);
-    }
-    // check collisions //
-    arrayForEach(balls.objs, ent, i) {
-        if (ent->obj.type != TYPE_DYNAMIC)
-            continue;
-        AABB queryBox = aabb(
-                ent->obj.pos.x, ent->obj.pos.y, 
-                ent->obj.pos.x + ent->obj.dim.x, 
-                ent->obj.pos.y + ent->obj.dim.y);
-        quadTreeGetIntersections(balls.qtree, queryBox, res);
-        if (res->len > 1) {
-            QTObject *qtObj;
-            int j;
-            arrayForEach(res, qtObj, j) {
-                DynGObj *obj = qtObj->data;
-                if (ent != obj)
-                    checkCollision(ent, obj);
-            }
-        }
-        arrayReset(res);
-    }
-    arrayDelete(&res);
-    updateCamera(game, ticks);
-
     char str[64];
     trSetFontSize(game->tr, 24);
     trSetSpacing(game->tr, 0.5f);
     trSetColor(game->tr, color(0, 128, 0, 255));
-    if (game->fps)
-        snprintf(str, sizeof(str),
-                "FPS: %d", game->fps);
-    trTextAt(game->tr, 0, 0, str);
+    if (game->fps) {
+        snprintf(str, sizeof(str), "FPS: %d", game->fps);
+        trTextAt(game->tr, 0, 0, str);
+    }
+}
+
+int onGameUpdate(Game *game, int ticks)
+{
+    UsrGame *usrGame = game->priv;
+    Player *player = usrGame->player;
+    if (player->update)
+        player->update(game, (Entity *) player, ticks);
+    checkCollisions(game);
+    cameraSetPosition(game->cam, player->ent.pos.x, player->ent.pos.y);
+    printFPS(game);
 
     return 0;
 }
 
-/**
- * Called when the game ends, to free up resources
- * 
- * @param game The game
- */
 void onGameDelete(Game *game)
 {
-    (void) game;
     int i;
+    UsrGame *usrGame = game->priv;
+    Entity *entity;
 
-    for (i = 0; i < NUM_TEXTURES; i++) {
-        if (balls.textures[i])
-            textureDelete(balls.textures[i]);
+    free(usrGame->map);
+    for (i = 0; i < NUM_TEXTURES; i++)
+        free(usrGame->textures[i]);
+
+    arrayForEach(usrGame->entities, entity, i) {
+        if (entity->sprite)
+            spriteDelete(entity->sprite);
+        free(entity);
     }
-    DynGObj *ent;
-    arrayForEach(balls.objs, ent, i) {
-        if (ent->obj.sprite)
-            spriteDelete(ent->obj.sprite);
-        free(ent);
-    }
-    arrayDelete(&balls.glyphs);
-    quadTreeDelete(balls.qtree);
-    printf("gameDeleted\n");
+
+    arrayDelete(&usrGame->entities);
+    free(usrGame);
 }
 

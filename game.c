@@ -6,8 +6,6 @@
 #include "game.h"
 #include "mrb_lib/timer.h"
 
-#define SIZE(a) sizeof(a)/sizeof(*a)
-
 /**
  * Creates a new game
  */
@@ -66,7 +64,7 @@ bool gameInit(Game *game, int winWidth, int winHeight, const char *title)
         fprintf(stderr, "Cannot init shaders\n");
         return false;
     }
-    game->cam->scale = 0.3f;
+    game->cam->scale = 1.0f;
     game->scaleSpeed = 1.001f;
     cameraSetPosition(game->cam, 0, 0);
 
