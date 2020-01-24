@@ -36,6 +36,7 @@ Window *windowNew(const char *title, int width, int height, int flags)
         windowDelete(window);
         return NULL;
     }
+    glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) {
         fprintf(stderr, "Cannot init glew\n");
         windowDelete(window);

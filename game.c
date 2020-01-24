@@ -26,7 +26,14 @@ Game *gameNew()
  */
 static bool gameInitShaders(Game *game) 
 {
-    if (!glProgramCompileShaders(game->prog, "shaders/sprite_shader"))
+    bool compiled = false;
+    double glVersion =  atof((const char *) glGetString(GL_VERSION));
+    if (glVersion <= 2.0) {
+        compiled = glProgramCompileShaders(game->prog, "shaders/sprite_shader.1.20");
+    } else {
+        compiled = glProgramCompileShaders(game->prog, "shaders/sprite_shader");
+    }
+    if (!compiled)
         return false;
     glProgramAddAttribute(game->prog, "vertexPosition");
     glProgramAddAttribute(game->prog, "vertexColor");
